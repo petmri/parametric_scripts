@@ -40,42 +40,42 @@ niftpath = '/home/thomasn/scripts/niftitools/';
 
 indy = find_str_cell(varargin, 'niftpath', 'n', 'n');
 if(sum(indy(:))  == 1)
-    x = find(indy == 1);
-    niftpath = varargin{x+1};
+	x = find(indy == 1);
+	niftpath = varargin{x+1};
 end
 
 indy = find_str_cell(varargin, 'mode', 'n', 'n');
 if(sum(indy(:))  == 1)
-    x = find(indy == 1);
-    status = varargin{x+1};
+	x = find(indy == 1);
+	status = varargin{x+1};
 end
 
 indy = find_str_cell(varargin, 'jobm', 'n', 'n');
 if(sum(indy(:))  == 1)
-    x = find(indy == 1);
-    jm = varargin{x+1};
+	x = find(indy == 1);
+	jm = varargin{x+1};
 end
 
 indy = find_str_cell(varargin, 'jobcfg', 'n', 'n');
 if(sum(indy(:))  == 1)
-    x = find(indy == 1);
-    config = varargin{x+1};
+	x = find(indy == 1);
+	config = varargin{x+1};
 end
 
 indy = find_str_cell(varargin, 'ADCpath', 'n', 'n');
 if(sum(indy(:))  == 1)
-    x = find(indy == 1);
-    ADCpath = varargin{x+1};
+	x = find(indy == 1);
+	ADCpath = varargin{x+1};
 end
 indy = find_str_cell(varargin, 'ploter', 'n', 'n');
 if(sum(indy(:))  == 1)
-    x = find(indy == 1);
-    ploter = varargin{x+1};
+	x = find(indy == 1);
+	ploter = varargin{x+1};
 end
 indy = find_str_cell(varargin, 'numCPU', 'n', 'n');
 if(sum(indy(:))  == 1)
-    x = find(indy == 1);
-    numCPUhold = varargin{x+1};
+	x = find(indy == 1);
+	numCPUhold = varargin{x+1};
 end
 
 %Make the output stuff
@@ -90,23 +90,23 @@ W = ones(1,numBvals);
 sizera = size(noise);
 
 for i = 1:numBvals
-    noisevolume = zeros(sizera(1), sizera(2), slices);
-    k = 1;
-    for j = 1:slices
-        (j-1)*numBvals+i;
-        noisevolume(:,:,k) = noise(:,:,(j-1)*numBvals+i);
-        k = k+1;
-    end
-    
-    noisevolume = noisevolume(:);
-    onlynoisevolume = noisevolume;
-    newnoisevolume = std(onlynoisevolume);
-    
-    if(newnoisevolume == 0)
-        W(1,i) = 1;
-    else
-        W(1,i) = 1/(newnoisevolume)^2;
-    end
+	noisevolume = zeros(sizera(1), sizera(2), slices);
+	k = 1;
+	for j = 1:slices
+		(j-1)*numBvals+i;
+		noisevolume(:,:,k) = noise(:,:,(j-1)*numBvals+i);
+		k = k+1;
+	end
+	
+	noisevolume = noisevolume(:);
+	onlynoisevolume = noisevolume;
+	newnoisevolume = std(onlynoisevolume);
+	
+	if(newnoisevolume == 0)
+		W(1,i) = 1;
+	else
+		W(1,i) = 1/(newnoisevolume)^2;
+	end
 end
 clear noisevolume
 clear newonoisevolume
@@ -116,7 +116,7 @@ W;
 
 %Fitype
 if(size(b_values, 2) == 2)
-    fitype = 'linearsimp';
+	fitype = 'linearsimp';
 end
 
 %Calculate the output
@@ -131,9 +131,9 @@ width*length*slices;
 
 
 fprintf(['Width:' num2str(width) ' Height:' num2str(length) ' Slices:' ...
-    num2str(slices) ' Total Pixels:' num2str(total) '\nB-value:' ...
-    num2str(b_values) ' \nNon-mask Factor:' num2str(factor) ['\nMasked ' ...
-    'Pixels:'] num2str(sum(mask(:))) ' Weighting Mat:' num2str(W) ' Fitype:' fitype ' NumCPU:' num2str(numCPUhold) '\n']);
+	num2str(slices) ' Total Pixels:' num2str(total) '\nB-value:' ...
+	num2str(b_values) ' \nNon-mask Factor:' num2str(factor) ['\nMasked ' ...
+	'Pixels:'] num2str(sum(mask(:))) ' Weighting Mat:' num2str(W) ' Fitype:' fitype ' NumCPU:' num2str(numCPUhold) '\n']);
 
 tic
 
@@ -156,35 +156,35 @@ neuroecon = 1;
 
 
 if(neuroecon)
-    %Schedule object, neuroecon
-    
-    sched = findResource('scheduler', 'configuration', 'NeuroEcon.local');
-    set(sched, 'SubmitArguments', '-l walltime=12:00:00 -m abe -M thomasn@caltech.edu')
-    
-    
-    warning off
-    
-    p = pwd;
-    n = '/home/thomasn/scripts/niftitools';
-    
-    
-    
-    j = createMatlabPoolJob(sched, 'configuration', 'NeuroEcon.local','PathDependencies', {p})
-    set(j, 'MaximumNumberOfWorkers', 20);
-    set(j, 'MinimumNumberOfWorkers', 1);
-    createTask(j, @MGET2starfitfnhelper, 1,{xdata, numvoxels});
-    
-    submit(j)
-    waitForState(j)
-    results = getAllOutputArguments(j)
-    destroy(j);
-    
-    Sout = cell2mat(results);
+	%Schedule object, neuroecon
+	
+	sched = findResource('scheduler', 'configuration', 'NeuroEcon.local');
+	set(sched, 'SubmitArguments', '-l walltime=12:00:00 -m abe -M thomasn@caltech.edu')
+	
+	
+	warning off
+	
+	p = pwd;
+	n = '/home/thomasn/scripts/niftitools';
+	
+	
+	
+	j = createMatlabPoolJob(sched, 'configuration', 'NeuroEcon.local','PathDependencies', {p})
+	set(j, 'MaximumNumberOfWorkers', 20);
+	set(j, 'MinimumNumberOfWorkers', 1);
+	createTask(j, @MGET2starfitfnhelper, 1,{xdata, numvoxels});
+	
+	submit(j)
+	waitForState(j)
+	results = getAllOutputArguments(j)
+	destroy(j);
+	
+	Sout = cell2mat(results);
 else
-    
-    Sout = MGET2starfitfnhelper(xdata, numvoxels);
-    
-    size(Sout)
+	
+	Sout = MGET2starfitfnhelper(xdata, numvoxels);
+	
+	size(Sout)
 end
 SzeroA = Sout(:,1);
 SRA    = Sout(:,2);

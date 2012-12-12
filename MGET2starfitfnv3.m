@@ -48,8 +48,8 @@ S = Q;
 fo_ = fitoptions('method','NonlinearLeastSquares','Upper',[Inf   0]);
 ok_ = isfinite(t) & isfinite(S);
 if ~all( ok_ )
-    warning( 'GenerateMFile:IgnoringNansAndInfs', ...
-        'Ignoring NaNs and Infs in data' );
+	warning( 'GenerateMFile:IgnoringNansAndInfs', ...
+		'Ignoring NaNs and Infs in data' );
 end
 st_ = [Q(end) -14.014000638344352723 ];
 set(fo_,'Startpoint',st_);
@@ -61,8 +61,8 @@ ft_ = fittype('exp1');
 
 % Or use coefficients from the original fit:
 if 0
-    cv_ = { 1556.7854374929556798, -10.701659430790392946};
-    [cf_ gof] = cfit(ft_,cv_{:});
+	cv_ = { 1556.7854374929556798, -10.701659430790392946};
+	[cf_ gof] = cfit(ft_,cv_{:});
 end
 % % % --- Create fit "fit 2"
 % fo_ = fitoptions('method','NonlinearLeastSquares','Lower',[-Inf    0    0],'MaxFunEvals',100,'MaxIter',100,'TolFun',1e-010,'TolX',1e-010, 'Display', 'off');
@@ -85,12 +85,12 @@ end
 SR    = gof.rsquare;
 
 if(SR < 0)
-    Szero = 0;
-    ST2 = 0;
+	Szero = 0;
+	ST2 = 0;
 else
-    
-    Szero = cf_.a;
-    ST2   = -1/cf_.b;
+	
+	Szero = cf_.a;
+	ST2   = -1/cf_.b;
 end
 SQ    = 0;%cf_.c;
 
@@ -199,8 +199,8 @@ Q;
 % %  SR
 % t
 % S
- %plot(t, S, 'bx'), hold on, plot(t, Szero.*exp(-t./ST2), 'g'), hold off
-%  
+%plot(t, S, 'bx'), hold on, plot(t, Szero.*exp(-t./ST2), 'g'), hold off
+%
 
 Sout = [Szero SR ST2 SQ];
 
