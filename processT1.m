@@ -42,7 +42,7 @@ function errorlog = processT1(dateA, subjectA, index, b_val, directions, ...
 	fitype  = 'linearsimp';
 	mask    = 0;
 	separate= 0;
-	isotropic = 1;
+	isotropic = 0;
 	niftpath = '/home/tommy/scripts/matlabcode/niftitools/';
 	
 	indy = find_str_cell(varargin, 'bnought', 'n', 'n');
@@ -116,14 +116,8 @@ function errorlog = processT1(dateA, subjectA, index, b_val, directions, ...
 		indD = varargin{x+1};
 	end
 	
-	%Not ADC
-	isotropic = 0;
-	
+
 	try
-		
-		
-		
-		
 		%Find the file
 		
 		if(strcmp(index, 'all'))
@@ -265,11 +259,6 @@ function errorlog = processT1(dateA, subjectA, index, b_val, directions, ...
 					noisemat = setnoise(inpath, w, h, z, imagea);
 					
 					%Initialize Directions
-					
-					if(isotropic == 1)
-						SADCiso = zeros(size(imagea,1), size(imagea,2), numslices);
-					end
-					
 					if(bnought)
 						Bzero(:,:,[1:numslices])     = imagea(:,:,[1:numslices]);
 						numB = numB-1;
@@ -320,85 +309,62 @@ function errorlog = processT1(dateA, subjectA, index, b_val, directions, ...
 						
 						D(i).outname = strcat(filename, 'DIR', num2str(i));
 						
-						SADC  = output.SADC;
-						Szero = output.Szero;
-						SR    = output.SR;
-						SQ    = output.SQ;
+						t2_fit  = output.t2_fit;
+						rho_fit = output.rho_fit;
+						r_squared    = output.r_squared;
+						confidence_interval_low = output.confidence_interval_low;
+						confidence_interval_high = output.confidence_interval_high;
 						
-						%       SADC(100:110);
-						%       SR(1:10);
-						
-						if(isotropic == 1)
-							SADCiso = SADCiso + SADC;
-						end
+						%       t2_fit(100:110);
+						%       r_squared(1:10);
 						
 						if(separate == 1)
-							fullpathADC = fullfile(inpath, ['T2star_map_', fitype,'_', filename,'.nii'])
-							fullpathR   = fullfile(inpath, ['R2_map_', fitype,'_', filename ...
+							fullpathT2 = fullfile(inpath, ['T2star_map_', fitype,'_', filename,'.nii'])
+							fullpathRsquared   = fullfile(inpath, ['Rsquared_map_', fitype,'_', filename ...
 								, '.nii'])
-							fullpathSo   = fullfile(inpath, ['So_map_', fitype,'_', filename ...
+							fullpathCILow   = fullfile(inpath, ['CI_low_map_', fitype,'_', filename ...
 								, '.nii'])
-							fullpathC   = fullfile(inpath, ['C_map_', fitype,'_', filename ...
+							fullpathCIHigh   = fullfile(inpath, ['CI_high_map_', fitype,'_', filename ...
 								, '.nii'])
 							
 							
-							ADCdirnii = make_nii(SADC, res, [1 1 1], [], b_val);
-							Rdirnii   = make_nii(SR, res, [1 1 1], [], b_val);
-							Sodirnii  = make_nii(Szero, res, [1 1 1], [], b_val);
-							SQdirnii  = make_nii(SQ, res, [1 1 1], [], b_val);
-							save_nii(ADCdirnii, fullpathADC);
-							save_nii(Rdirnii, fullpathR);
-							save_nii(Sodirnii, fullpathSo);
-							save_nii(SQdirnii, fullpathC);
+							T2dirnii = make_nii(t2_fit, res, [1 1 1], [], b_val);
+							Rsquareddirnii   = make_nii(r_squared, res, [1 1 1], [], b_val);
+							CILowdirnii  = make_nii(confidence_interval_low, res, [1 1 1], [], b_val);
+							CIHighdirnii  = make_nii(confidence_interval_high, res, [1 1 1], [], b_val);
+							save_nii(T2dirnii, fullpathT2);
+							save_nii(Rsquareddirnii, fullpathRsquared);
+							save_nii(CILowdirnii, fullpathCILow);
+							save_nii(CIHighdirnii, fullpathCIHigh);
 							
 						else
-							
-							imagec(:,:,(i-1)*numslices + [1:numslices]) = SADC;
-							imageR(:,:,(i-1)*numslices + [1:numslices]) = SR;
-							imageS(:,:,(i-1)*numslices + [1:numslices]) = Szero;
+							%Save if not separate
+							imagec(:,:,(i-1)*numslices + [1:numslices]) = t2_fit;
+							imageR(:,:,(i-1)*numslices + [1:numslices]) = r_squared;
+							imageS(:,:,(i-1)*numslices + [1:numslices]) = rho_fit;
+
+							fullpathADC = fullfile(inpath, ['T2_map_', fitype,'_all', filename, ...
+								'.nii'])
+							fullpathR   = fullfile(inpath, ['R2_map_', fitype,'_all', filename, ...
+								'.nii'])
+							fullpathSo   = fullfile(inpath, ['So_map_', fitype,'_', filename ...
+								, '.nii'])
+
+							ADCnii = make_nii(imagec, res, [], [], b_val);
+							Rnii   = make_nii(imageR, res, [], [], b_val);
+							Sodirnii  = make_nii(rho_fit, res, [], [], b_val);
+
+							save_nii(ADCnii, fullpathADC);
+							save_nii(Rnii, fullpathR);
+							save_nii(Sodirnii, fullpathSo);
 						end
-						
-						
 					end
 					
-					%Save if not separate
-					if(separate ~= 1)
-						fullpathADC = fullfile(inpath, ['T2_map_', fitype,'_all', filename, ...
-							'.nii'])
-						fullpathR   = fullfile(inpath, ['R2_map_', fitype,'_all', filename, ...
-							'.nii'])
-						fullpathSo   = fullfile(inpath, ['So_map_', fitype,'_', filename ...
-							, '.nii'])
-						
-						ADCnii = make_nii(imagec, res, [], [], b_val);
-						Rnii   = make_nii(imageR, res, [], [], b_val);
-						Sodirnii  = make_nii(Szero, res, [], [], b_val);
-						
-						save_nii(ADCnii, fullpathADC);
-						save_nii(Rnii, fullpathR);
-						save_nii(Sodirnii, fullpathSo);
-					end
-					
-					
-					%Save if isotropic
-					if(isotropic == 1)
-						
-						SADCiso = SADCiso./numDIR;
-						
-						isonii = make_nii(SADCiso, res, [], [], b_val);
-						
-						
-						fullpath = fullfile(inpath, ['ISOADC_map_', fitype,'_', filename, '.nii'])
-						
-						save_nii(isonii, fullpath);
-						
-					end
 					toc
 					disp('Total For 1 file');
 				end
 			end
 		end
-		
 		
 		
 	catch myEx

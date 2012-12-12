@@ -4,7 +4,7 @@
 function Sout = MGET2starfitfnv3(xdata, index)
 
 
-x = xdata{1}.b_values;
+TE		 = xdata{1}.b_values;
 found    = xdata{1}.found;
 W        = xdata{1}.W;
 fitype   = xdata{1}.fitype;
@@ -17,53 +17,49 @@ index = found(index);
 
 
 [i, j, k] = ind2sub([xyplane slices], index);
-
-Szero = 0;
-SR    = 0;
-SADC  = 0;
-SQ    = 0;
-
-
-
-
-%{
-
-[Szero, SR, ST2, SQ] = RAREVTRfitv2(x,index,W, slices, numBvals, xyplane, ...
-                                           imagea)
-%}
-[i, j, k] = ind2sub([xyplane slices], index);
 cool = reshape(imagea(i, j,([1:numBvals]-1)*slices + k), 1,numBvals);
-y = cast(cool, 'double') ;
+SI = cast(cool, 'double') ;
 
-TE = x';
-Q = y';
+TE = TE';
+te = TE/1000;
 
+SI = SI';
 
 W = W(:);
-W = W;
+%W = W;
 
-t = TE/1000;
-S = Q;
 % --- Create fit "fit 1"
 fo_ = fitoptions('method','NonlinearLeastSquares','Upper',[Inf   0]);
-ok_ = isfinite(t) & isfinite(S);
+ok_ = isfinite(te) & isfinite(SI);
 if ~all( ok_ )
 	warning( 'GenerateMFile:IgnoringNansAndInfs', ...
 		'Ignoring NaNs and Infs in data' );
 end
-st_ = [Q(end) -14.014000638344352723 ];
+st_ = [SI(end) -14.014000638344352723 ];
 set(fo_,'Startpoint',st_);
 set(fo_,'Weight',W);
 ft_ = fittype('exp1');
 
 % Fit this model using new data
-[cf_ gof] = fit(t(ok_),S(ok_),ft_,fo_);
+[cf_ gof] = fit(te(ok_),SI(ok_),ft_,fo_);
 
-% Or use coefficients from the original fit:
-if 0
-	cv_ = { 1556.7854374929556798, -10.701659430790392946};
-	[cf_ gof] = cfit(ft_,cv_{:});
+% Evaluate goodness of fit
+r_squared = gof.rsquare;
+confidence_interval = confint(cf_,0.95);
+
+if(r_squared < 0)
+	rho_fit = 0;
+	t2_fit = 0;
+	confidence_interval(1,2) = 0;
+	confidence_interval(2,2) = 0;
+else
+	rho_fit = cf_.a;
+	t2_fit   = -1/cf_.b;
 end
+
+Sout = [t2_fit rho_fit r_squared confidence_interval(1,2) confidence_interval(2,2)];
+
+
 % % % --- Create fit "fit 2"
 % fo_ = fitoptions('method','NonlinearLeastSquares','Lower',[-Inf    0    0],'MaxFunEvals',100,'MaxIter',100,'TolFun',1e-010,'TolX',1e-010, 'Display', 'off');
 % %fo_ = fitoptions('method','NonlinearLeastSquares','Lower',[0    0 -Inf]);
@@ -79,26 +75,7 @@ end
 %     'dependent',{'y'},'independent',{'x'},...
 %     'coefficients',{'a', 'b', 'c'});
 
-% Fit this model using new data
-
-
-SR    = gof.rsquare;
-
-if(SR < 0)
-	Szero = 0;
-	ST2 = 0;
-else
-	
-	Szero = cf_.a;
-	ST2   = -1/cf_.b;
-end
-SQ    = 0;%cf_.c;
-
-
-
 %Do NNLS fit;
-TE;
-Q;
 
 % t2 = 1:0.5:2000;
 % A  = exp(-kron(TE, 1./t2));
@@ -113,14 +90,14 @@ Q;
 %
 % if(sum(amplitudes) == 0)
 %     %Terrible fit, initialize to be zero;
-%     Szero = (-1);
+%     rho_fit = (-1);
 %     ST2   = -1;
 %     %SR    = -1;
 %     SQ    = -1;
 % else
 %
 % ind = find(amplitudes == max(amplitudes));
-% Szero = amplitudes(ind);
+% rho_fit = amplitudes(ind);
 % ST2 = t2(ind);
 % end
 % QE = A*x;
@@ -184,7 +161,7 @@ Q;
 %    cf_ = cfit(ft_,cv_{:});
 % end
 %
-% Szero = cf_.a;
+% rho_fit = cf_.a;
 % ST2   = (1/cf_.b);
 % SR    = gof.rsquare;
 %
@@ -193,16 +170,12 @@ Q;
 % end
 %  SQ = cf_.c;
 %
-%  S = Szero.*exp(-TE./ST2) + SQ;
+%  S = rho_fit.*exp(-TE./ST2) + SQ;
 %
 % %  scatter(TE, Q), hold on, plot(TE, S), hold off
 % %  SR
 % t
 % S
-%plot(t, S, 'bx'), hold on, plot(t, Szero.*exp(-t./ST2), 'g'), hold off
+%plot(t, S, 'bx'), hold on, plot(t, rho_fit.*exp(-t./ST2), 'g'), hold off
 %
 
-Sout = [Szero SR ST2 SQ];
-
-%pause
-%

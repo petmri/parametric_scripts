@@ -78,12 +78,6 @@ if(sum(indy(:))  == 1)
 	numCPUhold = varargin{x+1};
 end
 
-%Make the output stuff
-SzeroA = ones(width, length, slices).*factor;
-SADCA  = ones(width, length, slices).*factor;
-SRA    = ones(width, length, slices).*factor;
-SQA    = ones(width, length, slices).*factor;
-
 
 %Make Weighting Matrix
 W = ones(1,numBvals);
@@ -186,27 +180,24 @@ else
 	
 	size(Sout)
 end
-SzeroA = Sout(:,1);
-SRA    = Sout(:,2);
-SADCA  = Sout(:,3);
-SQA    = Sout(:,4);
-
+t2_fit					 = Sout(:,1);
+rho_fit					 = Sout(:,2);
+r_squared				 = Sout(:,3);
+confidence_interval_low	 = Sout(:,4);
+confidence_interval_high = Sout(:,5);
 
 toc
 
-
-
-
-
-disp('DONE with one direction')
+disp('DONE with T2 fitting')
 %
 %     SADCA(100:110);
 %     SRA(1:10);
 
-output.Szero = reshape(SzeroA, [width, length, slices]);
-output.SADC  = reshape(SADCA,  [width, length, slices]);
-output.SR    = reshape(SRA, [width, length, slices]);
-output.SQ    = reshape(SQA, [width, length, slices]);
+output.t2_fit					= reshape(t2_fit, [width, length, slices]);
+output.rho_fit					= reshape(rho_fit,  [width, length, slices]);
+output.r_squared				= reshape(r_squared, [width, length, slices]);
+output.confidence_interval_low  = reshape(confidence_interval_low, [width, length, slices]);
+output.confidence_interval_high = reshape(confidence_interval_high, [width, length, slices]);
 
 
 
