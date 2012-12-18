@@ -136,7 +136,7 @@ function errorlog = processT1(dateA, subjectA, index, b_val, directions, ...
 		
 		for qw = 1:numel(DD)
 			DD(qw).name
-			if((~strcmp(DD(qw).name, '.') && ~strcmp(DD(qw).name, '..')) && DD(qw).isdir)
+			if(( ~strcmp(DD(qw).name, '.') && ~strcmp(DD(qw).name, '..') ) && DD(qw).isdir)
 				
 				inpath = fullfile(inpatha, DD(qw).name, 'T2star');
 				

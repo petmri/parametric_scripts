@@ -145,7 +145,7 @@ xdata{1}.found    = found;
 numvoxels = numel(found);
 xdata{1}.numvoxels = numvoxels;
 
-neuroecon = 1;
+neuroecon = 0;
 
 
 
