@@ -41,7 +41,7 @@ set(fo_,'Weight',W);
 ft_ = fittype('exp1');
 
 % Fit this model using new data
-[cf_ gof] = fit(te(ok_),SI(ok_),ft_,fo_);
+[cf_, gof] = fit(te(ok_),SI(ok_),ft_,fo_);
 
 % Evaluate goodness of fit
 r_squared = gof.rsquare;
