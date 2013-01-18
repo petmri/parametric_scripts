@@ -22,7 +22,7 @@ function varargout = t2_gui(varargin)
 
 % Edit the above text to modify the response to help t2_gui
 
-% Last Modified by GUIDE v2.5 17-Jan-2013 18:12:21
+% Last Modified by GUIDE v2.5 18-Jan-2013 10:28:49
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -54,6 +54,9 @@ function t2_gui_OpeningFcn(hObject, eventdata, handles, varargin)
 
 % Choose default command line output for t2_gui
 handles.output = hObject;
+
+% Create structure to hold file list
+handles.file_list = {};
 
 % Update handles structure
 guidata(hObject, handles);
@@ -87,32 +90,43 @@ guidata(hObject, handles);
     '*.nii','Nifti Files (*.nii)'; ...
     '*.hdr;*.img','Analyze Files (*.hdr, *.img)'}, ...
     'Pick a file', ...
-    'MultiSelect', 'on');
+    'MultiSelect', 'on'); %#ok<NASGU>
 if isequal(filename,0)
     %disp('User selected Cancel')
 else
     %disp(['User selected ', fullfile(pathname, filename)])
     list = get(handles.filename_box,'String');
     
+    % Combine path and filename together
+    fullpath = strcat(pathname,filename);
+    
     % Stupid matlab uses a different datastructure if only one file
     % is selected, handle special case
-    if iscell(filename)
-        filename = filename';
+    if ischar(list)
+        list = {list};
     end
+    if ischar(filename)
+        filename = {filename};
+    end
+    if ischar(fullpath)
+        fullpath = {fullpath};
+    end
+
+    filename = filename';
+    fullpath = fullpath';
         
     % Add selected files to listbox
     if strcmp(list,'No Files')
         list = filename;
-    elseif ischar(list)
-        % Stupid matlab uses a different datastructure if only one file
-        % is selected, handle special case
-        list = {list;  filename};
+        handles.file_list = fullpath;
     else
         list = [list;  filename];
+        handles.file_list = [handles.file_list; fullpath];
     end
     
     set(handles.filename_box,'String',list, 'Value',1)
 end
+guidata(hObject, handles);
 
 
 
@@ -128,9 +142,11 @@ for n=size(index_selected,2):-1:1
     % change subsequent index numbers
     %disp(['User removed ', list{index_selected(n)}]);
     list(index_selected(n)) = [];
+    handles.file_list(index_selected(n)) = [];
 end
 
 set(handles.filename_box,'String',list, 'Value',1)
+guidata(hObject, handles);
 
 % --- Executes on selection change in filename_box.
 function filename_box_Callback(hObject, eventdata, handles)
@@ -155,7 +171,7 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
-function te_box_Callback(hObject, eventdata, handles)
+function te_box_Callback(hObject, eventdata, handles) %#ok<*INUSD>
 % hObject    handle to te_box (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -178,18 +194,19 @@ end
 
 
 % --- Executes on button press in ok_button.
-function ok_button_Callback(hObject, eventdata, handles)
+function ok_button_Callback(hObject, eventdata, handles) %#ok<*INUSL>
 % hObject    handle to ok_button (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 disp('User selected Ok')
-file_list = get(handles.filename_box,'String');
-te_list = get(handles.te_box,'String');
+file_list = handles.file_list;
+te_list = str2num(get(handles.te_box,'String'))'; %#ok<ST2NM>
 fit_type = get(get(handles.fittype,'SelectedObject'),'Tag');
-number_cpus = str2num(get(handles.number_cpus,'String'));
+number_cpus = str2num(get(handles.number_cpus,'String')); %#ok<ST2NM>
+neuroecon = get(handles.neuroecon,'Value');
+email = get(handles.email_box,'String');
 delete(handles.figure1);
-
 % disp('User selected files: ');
 % disp(file_list);
 % disp('User slected TE: ');
@@ -198,11 +215,13 @@ delete(handles.figure1);
 % disp(fit_type);
 % disp('User slected CPUs: ');
 % disp(number_cpus);
-
-% Sanity check on input
+% disp('User slected Neuroecon: ');
+% disp(neuroecon);
+% disp('User slected email: ');
+% disp(email);
 
 % Call T2 Function
-% calculateT2(file_list,te,fit_type);
+calculateT2(file_list,te_list,fit_type, number_cpus, neuroecon, email);
 
 
 
@@ -237,6 +256,29 @@ function number_cpus_Callback(hObject, eventdata, handles)
 % --- Executes during object creation, after setting all properties.
 function number_cpus_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to number_cpus (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function email_box_Callback(hObject, eventdata, handles)
+% hObject    handle to email_box (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of email_box as text
+%        str2double(get(hObject,'String')) returns contents of email_box as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function email_box_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to email_box (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 

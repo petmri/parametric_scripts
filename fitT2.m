@@ -59,6 +59,27 @@ elseif(strcmp(fit_type,'linear_simple'))
     rho_fit = cf_.p2;
     t2_fit   = -1/cf_.p1;
     t2_95_ci = -1./confidence_interval(:,1);
+elseif(strcmp(fit_type,'linear_fast'))
+    ln_si = log(si);
+
+    % Fit the model
+    Ybar = mean(ln_si(ok_)); 
+    Xbar = mean(te(ok_));
+
+    y = ln_si(ok_)-Ybar;
+    x = te(ok_)-Xbar;
+    slope =sum(x.*y)/sum(x.^2);
+    intercept = Ybar-slope.*Xbar; %#ok<NASGU>
+    r_squared = (sum(x.*y)/sqrt(sum(x.^2)*sum(y.^2)))^2;
+	
+    
+    % Save Results
+    t2_fit = -1/slope;
+    rho_fit = intercept;
+    % Confidence intervals not calculated
+	t2_95_ci(1) = -1;
+	t2_95_ci(2) = -1;
+    
 elseif(strcmp(fit_type,'none'))
     r_squared = 1;
     rho_fit = 1;
