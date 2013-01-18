@@ -7,7 +7,7 @@ number_voxels = dim_x*dim_y*dim_z;
 
 % Preallocate for speed
 fit_output = zeros([number_voxels 5],'double');
-matlabpool local 4;
+
 % previous_row = 1;
 parfor n = 1:number_voxels
 % for n = 1:number_voxels
@@ -27,6 +27,6 @@ parfor n = 1:number_voxels
 %     end
 end
 
-matlabpool close
+
     
 
