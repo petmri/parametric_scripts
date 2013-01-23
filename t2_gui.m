@@ -86,9 +86,10 @@ function add_files_Callback(hObject, eventdata, handles)
 guidata(hObject, handles);
 
 [filename, pathname, filterindex] = uigetfile( ...
-    {  '*.*',  'All Files (*.*)'; ...
-    '*.nii','Nifti Files (*.nii)'; ...
-    '*.hdr;*.img','Analyze Files (*.hdr, *.img)'}, ...
+    {  '*.nii','Nifti Files (*.nii)'; ...
+	'*2dseq','Bruker Files (2dseq)'; ...
+    '*.hdr;*.img','Analyze Files (*.hdr, *.img)';...
+    '*.*',  'All Files (*.*)'}, ...
     'Pick a file', ...
     'MultiSelect', 'on'); %#ok<NASGU>
 if isequal(filename,0)
@@ -116,14 +117,22 @@ else
     fullpath = fullpath';
         
     % Add selected files to listbox
-    if strcmp(list,'No Files')
-        list = filename;
-        handles.file_list = fullpath;
-    else
-        list = [list;  filename];
-        handles.file_list = [handles.file_list; fullpath];
-    end
+	if strcmp(list,'No Files')
+		list = filename;
+		handles.file_list = fullpath;
+	else
+		list = [list;  filename];
+		handles.file_list = [handles.file_list; fullpath];
+	end
     
+	% Read and autoset TE if present in description field
+	% Use last file on list by default
+	[nii.hdr,nii.filetype,nii.fileprefix,nii.machine] = load_nii_hdr(fullpath{end});
+	te = nii.hdr.hist.descrip;
+	if ~isempty(te)
+		set(handles.te_box,'String',te);
+	end
+	
     set(handles.filename_box,'String',list, 'Value',1)
 end
 guidata(hObject, handles);

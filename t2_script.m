@@ -8,7 +8,7 @@ fit_type = 'linear_weighted';
                     % options{'none','linear_simple','linear_weighted','exponential','linear_fast'}
 number_cpus = 4;    % not used if running on neuroecon
 neuroecon = 0;      % boolean
-email = srsbarnes@gmail.com;
+email = 'srsbarnes@gmail.com';
                     % Email will be sent to this address on job completion
 %------------------------------------
 

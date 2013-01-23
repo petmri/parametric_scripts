@@ -69,10 +69,13 @@ if ~neuroecon
 end
 
 execution_time = zeros(size(file_list,1));
+
+% For each file in list do processing
 for n=1:size(file_list,1)
-    tic
+    tic %start timer
     imagefile=cell2mat(file_list(n));
-    % Read file and get header information
+    
+	% Read file and get header information
     [file_path, filename]  = fileparts(imagefile);
     nii = load_nii(imagefile);
     res = nii.hdr.dime.pixdim;
