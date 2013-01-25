@@ -169,6 +169,8 @@ if ~neuroecon
     matlabpool close;
 end
 
+total_time = sum(execution_time);
+
 if ~isempty(email)
     % Email the person on completion
     % Define these variables appropriately:
@@ -184,10 +186,11 @@ if ~isempty(email)
     props.setProperty('mail.smtp.socketFactory.class', 'javax.net.ssl.SSLSocketFactory');
     props.setProperty('mail.smtp.socketFactory.port','465');
 
-    sendmail(email,'T2 star map processing completed',['Hello! Your T2 Calc job is done! ' ...
-        'compution time was ',num2str(execution_time)]);
+	hostname = char( getHostName( java.net.InetAddress.getLocalHost ) );
+	
+    sendmail(email,'T2 star map processing completed',['Hello! Your T2 Calc job on '...
+		,hostname,' is done! compution time was ',datestr(datenum(0,0,0,0,0,total_time),'HH:MM:SS')]);
 end
 
 disp(['All processing complete at ', datestr(now,'mmmm dd, yyyy HH:MM:SS')])
-total_time = sum(execution_time);
-disp(['Total execution time was: ',datestr(datenum(0,0,0,0,0,total_time(n)),'HH:MM:SS')]);
+disp(['Total execution time was: ',datestr(datenum(0,0,0,0,0,total_time),'HH:MM:SS')]);
