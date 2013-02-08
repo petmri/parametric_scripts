@@ -51,15 +51,15 @@ end
 disp(['Starting execution at ', datestr(now,'mmmm dd, yyyy HH:MM:SS')])
 disp('User selected files: ');
 disp(file_list);
-disp('User slected TE: ');
+disp('User selected TE: ');
 disp(te_list);
-disp('User slected fit: ');
+disp('User selected fit: ');
 disp(fit_type);
-disp('User slected CPUs: ');
+disp('User selected CPUs: ');
 disp(number_cpus);
-disp('User slected Neuroecon: ');
+disp('User selected Neuroecon: ');
 disp(neuroecon);
-disp('User slected email: ');
+disp('User selected email: ');
 disp(email);
 % return;
 
