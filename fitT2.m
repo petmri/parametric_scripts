@@ -41,7 +41,7 @@ if r_squared>=0.6
 		confidence_interval = confint(cf_,0.95);
 		rho_fit = cf_.a;
 		t2_fit   = -1/cf_.b;
-		t2_95_ci = -1./confidence_interval(:,1);
+		t2_95_ci = -1./confidence_interval(:,2);
 	elseif(strcmp(fit_type,'linear_weighted'))
 		% Restrict fits for T2 from 1ms to 2500ms, and coefficient ('rho') from 
 		% 0 to inf
