@@ -68,7 +68,7 @@ if ~neuroecon
     matlabpool('local', number_cpus);
 end
 
-execution_time = zeros(size(file_list,1));
+execution_time = zeros(size(file_list,1),1);
 
 % For each file in list do processing
 for n=1:size(file_list,1)
