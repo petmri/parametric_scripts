@@ -10,16 +10,30 @@ end
 
 % First do a fast sanity check on data, prevents time consuming fits
 % of junk data
-ln_si = log(si);
-Ybar = mean(ln_si(ok_)); 
-Xbar = mean(te(ok_));
-y = ln_si(ok_)-Ybar;
-x = te(ok_)-Xbar;
-%     slope =sum(x.*y)/sum(x.^2);
-%     intercept = Ybar-slope.*Xbar; %#ok<NASGU>
-r_squared = (sum(x.*y)/sqrt(sum(x.^2)*sum(y.^2)))^2;
-if ~isfinite(r_squared)
-	r_squared = 0;
+if(strcmp(fit_type,'t1_fit'))
+	ln_si = log((si-max(si)-1)*-1);
+	Ybar = mean(ln_si(ok_)); 
+	Xbar = mean(te(ok_));
+	y = ln_si(ok_)-Ybar;
+	x = te(ok_)-Xbar;
+	%     slope =sum(x.*y)/sum(x.^2);
+	%     intercept = Ybar-slope.*Xbar; %#ok<NASGU>
+	r_squared = (sum(x.*y)/sqrt(sum(x.^2)*sum(y.^2)))^2;
+	if ~isfinite(r_squared)
+		r_squared = 0;
+	end
+else
+	ln_si = log(si);
+	Ybar = mean(ln_si(ok_)); 
+	Xbar = mean(te(ok_));
+	y = ln_si(ok_)-Ybar;
+	x = te(ok_)-Xbar;
+	%     slope =sum(x.*y)/sum(x.^2);
+	%     intercept = Ybar-slope.*Xbar; %#ok<NASGU>
+	r_squared = (sum(x.*y)/sqrt(sum(x.^2)*sum(y.^2)))^2;
+	if ~isfinite(r_squared)
+		r_squared = 0;
+	end
 end
 
 % Continue if fit is rational
@@ -94,6 +108,24 @@ if r_squared>=0.6
 		% Confidence intervals not calculated
 		t2_95_ci(1) = -1;
 		t2_95_ci(2) = -1;
+	elseif(strcmp(fit_type,'t1_fit'))
+		% Restrict fits for T2 from 1ms to 2500ms, and coefficient ('rho') from 
+		% 0 to inf
+		fo_ = fitoptions('method','NonlinearLeastSquares','Lower',[0 0],'Upper',[Inf   5000]);
+		st_ = [max(si) 500 ];
+		set(fo_,'Startpoint',st_);
+		%set(fo_,'Weight',w);
+		ft_ =  fittype('a*(1-exp(-x/b))');
+
+		% Fit the model
+		[cf_, gof] = fit(te(ok_),si(ok_),ft_,fo_);
+
+		% Save Results
+		r_squared = gof.rsquare;
+		confidence_interval = confint(cf_,0.95);
+		rho_fit = cf_.a;
+		t2_fit   = cf_.b;
+		t2_95_ci = confidence_interval(:,2);
 
 	elseif(strcmp(fit_type,'none'))
 		r_squared = 1;
