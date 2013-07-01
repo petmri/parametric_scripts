@@ -135,7 +135,11 @@ for n=1:size(file_list,1)
     confidence_interval_high = reshape(confidence_interval_high, [dim_x, dim_y, dim_z]);
 
     % Create output names
-    fullpathT2 = fullfile(file_path, ['T2star_map_', fit_type,'_', filename,'.nii']);
+	if strcmp(fit_type,'t1_fit')
+		fullpathT2 = fullfile(file_path, ['T1_map_', fit_type,'_', filename,'.nii']);
+	else
+		fullpathT2 = fullfile(file_path, ['T2star_map_', fit_type,'_', filename,'.nii']);
+	end
     fullpathRsquared   = fullfile(file_path, ['Rsquared_', fit_type,'_', filename ...
         , '.nii']);
     fullpathCILow   = fullfile(file_path, ['CI_low_', fit_type,'_', filename ...

@@ -22,7 +22,7 @@ function varargout = t2_gui(varargin)
 
 % Edit the above text to modify the response to help t2_gui
 
-% Last Modified by GUIDE v2.5 18-Jan-2013 10:28:49
+% Last Modified by GUIDE v2.5 01-Jul-2013 13:21:37
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -212,6 +212,7 @@ disp('User selected Ok')
 file_list = handles.file_list;
 te_list = str2num(get(handles.te_box,'String'))'; %#ok<ST2NM>
 fit_type = get(get(handles.fittype,'SelectedObject'),'Tag');
+single_fit = get(handles.single_fit,'Value');
 number_cpus = str2num(get(handles.number_cpus,'String')); %#ok<ST2NM>
 neuroecon = get(handles.neuroecon,'Value');
 email = get(handles.email_box,'String');
@@ -230,9 +231,11 @@ delete(handles.figure1);
 % disp(email);
 
 % Call T2 Function
-calculateT2(file_list,te_list,fit_type, number_cpus, neuroecon, email);
-
-
+if single_fit
+	calculateMultiFile(file_list,te_list,fit_type, number_cpus, neuroecon, email);
+else
+	calculateT2(file_list,te_list,fit_type, number_cpus, neuroecon, email);
+end
 
 % --- Executes on button press in cancel_button.
 function cancel_button_Callback(hObject, eventdata, handles)
@@ -296,3 +299,12 @@ function email_box_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+% --- Executes on button press in single_fit.
+function single_fit_Callback(hObject, eventdata, handles)
+% hObject    handle to single_fit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of single_fit
