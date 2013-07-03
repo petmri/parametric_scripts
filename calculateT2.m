@@ -1,5 +1,5 @@
 
-function calculateT2(file_list,te_list,fit_type,number_cpus,neuroecon,email)
+function calculateT2(file_list,te_list,fit_type,odd_echoes,rsquared_threshold,number_cpus,neuroecon,output_basename,email)
 
 % INPUTS
 %------------------------------------
@@ -16,11 +16,11 @@ function calculateT2(file_list,te_list,fit_type,number_cpus,neuroecon,email)
 %------------------------------------
 
 % Sanity check on input
-if nargin < 5
+if nargin < 6
     warning( 'Arguments missing' );
     return;
 end
-if nargin < 6
+if nargin < 7
     email = '';
 end
 ok_ = isfinite(te_list) & ~isnan(te_list);
@@ -88,11 +88,16 @@ for n=1:size(file_list,1)
     % Reshape image to extract individual decay curves
     % shaped to be four dimensional with dimensions [x,y,z,te]
     shaped_image = reshape(image_3d,dim_x,dim_y,dim_te,dim_z);
-    % **************
-    %     shaped_image = shaped_image(:,:,:,1);
-    %     dim_z = 1;
-    % **************
     shaped_image = permute(shaped_image,[1,2,4,3]);
+	
+	% Remove even echoes if requested
+	if odd_echoes
+		dim_te = floor((dim_te+1)/2);
+		temp_image = zeros(dim_x,dim_y,dim_z,dim_te);
+		for m=1:dim_te
+			temp_image(:,:,:,m) = shaped_image(:,:,:,1+2*(m-1));
+		end
+	end
 
 
     % Run Fitting Algorithms
@@ -127,19 +132,28 @@ for n=1:size(file_list,1)
     r_squared				 = fit_output(:,3);
     confidence_interval_low	 = fit_output(:,4);
     confidence_interval_high = fit_output(:,5);
-
+	
+	% Throw out bad results
+	for m=1:size(t2_fit) 
+		if(r_squared(m) < rsquared_threshold && t2_fit(m)~=-2)
+			rho_fit(m) = -1;
+			t2_fit(m) = -1;
+			confidence_interval_low(m) = -1;
+			confidence_interval_high(m) = -1;
+		end
+	end
+	
     t2_fit					= reshape(t2_fit, [dim_x, dim_y, dim_z]);
     rho_fit					= reshape(rho_fit,  [dim_x, dim_y, dim_z]); %#ok<NASGU>
     r_squared				= reshape(r_squared, [dim_x, dim_y, dim_z]);
     confidence_interval_low  = reshape(confidence_interval_low, [dim_x, dim_y, dim_z]);
     confidence_interval_high = reshape(confidence_interval_high, [dim_x, dim_y, dim_z]);
 
+
+
     % Create output names
-	if strcmp(fit_type,'t1_fit')
-		fullpathT2 = fullfile(file_path, ['T1_map_', fit_type,'_', filename,'.nii']);
-	else
-		fullpathT2 = fullfile(file_path, ['T2star_map_', fit_type,'_', filename,'.nii']);
-	end
+    fullpathT2 = fullfile(file_path, [output_basename, '_', fit_type,'_', filename ...
+        ,'.nii']);
     fullpathRsquared   = fullfile(file_path, ['Rsquared_', fit_type,'_', filename ...
         , '.nii']);
     fullpathCILow   = fullfile(file_path, ['CI_low_', fit_type,'_', filename ...
