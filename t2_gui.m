@@ -22,7 +22,7 @@ function varargout = t2_gui(varargin)
 
 % Edit the above text to modify the response to help t2_gui
 
-% Last Modified by GUIDE v2.5 02-Jul-2013 17:24:42
+% Last Modified by GUIDE v2.5 10-Jul-2013 15:19:06
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -212,13 +212,15 @@ disp('User selected Ok')
 file_list = handles.file_list;
 te_list = str2num(get(handles.te_box,'String'))'; %#ok<ST2NM>
 fit_type = get(get(handles.fittype,'SelectedObject'),'Tag');
-single_fit = get(handles.single_fit,'Value');
+data_order = get(get(handles.data_order,'SelectedObject'),'Tag');
+% single_fit = get(handles.single_fit,'Value');
 number_cpus = str2num(get(handles.number_cpus,'String')); %#ok<ST2NM>
 neuroecon = get(handles.neuroecon,'Value');
 email = get(handles.email_box,'String');
 output_basename = get(handles.output_basename,'String');
 odd_echoes = get(handles.odd_echoes, 'Value');
 rsquared_threshold = str2num(get(handles.rsquared_threshold, 'String')); %#ok<ST2NM>
+tr = str2num(get(handles.tr, 'String')); %#ok<ST2NM>
 
 delete(handles.figure1);
 % disp('User selected files: ');
@@ -235,11 +237,12 @@ delete(handles.figure1);
 % disp(email);
 
 % Call T2 Function
-if single_fit
-	calculateMultiFile(file_list,te_list,fit_type,rsquared_threshold, number_cpus, neuroecon, output_basename, email);
-else
-	calculateT2(file_list,te_list,fit_type,odd_echoes,rsquared_threshold, number_cpus, neuroecon, output_basename, email);
-end
+calculateT2(file_list,te_list,fit_type,odd_echoes,rsquared_threshold, number_cpus, neuroecon, output_basename,data_order,tr, email);
+% if single_fit
+% 	calculateMultiFile(file_list,te_list,fit_type,rsquared_threshold, number_cpus, neuroecon, output_basename,tr, email);
+% else
+% 	calculateT2(file_list,te_list,fit_type,odd_echoes,rsquared_threshold, number_cpus, neuroecon, output_basename,tr, email);
+% end
 
 % --- Executes on button press in cancel_button.
 function cancel_button_Callback(hObject, eventdata, handles)
@@ -352,8 +355,14 @@ guidata(hObject, handles);
 fit_type = get(get(handles.fittype,'SelectedObject'),'Tag');
 if isempty(strfind(fit_type,'t1'))
 	set(handles.output_basename,'String','T2star_map');
+	set(handles.tr,'Enable','off')
 else
 	set(handles.output_basename,'String','T1_map');
+	if ~isempty(strfind(fit_type,'fa')) || ~isempty(strfind(fit_type,'ti_exponential'))
+		set(handles.tr,'Enable','on')
+	else
+		set(handles.tr,'Enable','off')
+	end
 end
 
 
@@ -391,3 +400,26 @@ function odd_echoes_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of odd_echoes
+
+
+
+function tr_Callback(hObject, eventdata, handles)
+% hObject    handle to tr (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of tr as text
+%        str2double(get(hObject,'String')) returns contents of tr as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function tr_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to tr (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end

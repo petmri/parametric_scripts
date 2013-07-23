@@ -1,5 +1,5 @@
 
-function calculateT2(file_list,te_list,fit_type,odd_echoes,rsquared_threshold,number_cpus,neuroecon,output_basename,email)
+function calculateT2(file_list,parameter_list,fit_type,odd_echoes,rsquared_threshold,number_cpus,neuroecon,output_basename,data_order,tr,email)
 
 % INPUTS
 %------------------------------------
@@ -16,17 +16,17 @@ function calculateT2(file_list,te_list,fit_type,odd_echoes,rsquared_threshold,nu
 %------------------------------------
 
 % Sanity check on input
-if nargin < 6
+if nargin < 10
     warning( 'Arguments missing' );
     return;
 end
-if nargin < 7
+if nargin < 11
     email = '';
 end
-ok_ = isfinite(te_list) & ~isnan(te_list);
-if ~all( ok_ ) || isempty(te_list)
-	warning( 'TE contains invalid values' );
-    disp(te_list);
+ok_ = isfinite(parameter_list) & ~isnan(parameter_list);
+if ~all( ok_ ) || isempty(parameter_list)
+	warning( 'TE/TR/FA/TI list contains invalid values' );
+    disp(parameter_list);
     return;
 end
 for m=size(file_list,1):-1:1
@@ -51,8 +51,8 @@ end
 disp(['Starting execution at ', datestr(now,'mmmm dd, yyyy HH:MM:SS')])
 disp('User selected files: ');
 disp(file_list);
-disp('User selected TE: ');
-disp(te_list);
+disp('User selected TE/TR/FA/TI: ');
+disp(parameter_list);
 disp('User selected fit: ');
 disp(fit_type);
 disp('User selected CPUs: ');
@@ -61,6 +61,19 @@ disp('User selected Neuroecon: ');
 disp(neuroecon);
 disp('User selected email: ');
 disp(email);
+disp('User selected data order: ');
+disp(data_order);
+disp('User selected r^2 threshold: ');
+disp(rsquared_threshold);
+disp('User selected output basename: ');
+disp(output_basename);
+disp('User selected only odd echoes: ');
+disp(odd_echoes);
+if ~isempty(strfind(fit_type,'t1')) && ~isempty(strfind(fit_type,'fa'))
+	disp('User selected tr: ');
+	disp(tr);
+end
+
 % return;
 
 % Create parallel processing pool
@@ -70,33 +83,79 @@ end
 
 execution_time = zeros(size(file_list,1),1);
 
-% For each file in list do processing
-for n=1:size(file_list,1)
-    tic %start timer
-    imagefile=cell2mat(file_list(n));
-    
-	% Read file and get header information
-    [file_path, filename]  = fileparts(imagefile);
-    nii = load_nii(imagefile);
-    res = nii.hdr.dime.pixdim;
-    res = res(2:4);
-    image_3d = nii.img;
-    [dim_x, dim_y, dim_zte] = size(image_3d);
-    dim_te = size(te_list,1);
-    dim_z = dim_zte / dim_te;
+% Calculate number of fits
+if strcmp(data_order,'xyzfile')
+	number_of_fits = 1;
+else
+	number_of_fits = size(file_list,1);
+end
 
-    % Reshape image to extract individual decay curves
-    % shaped to be four dimensional with dimensions [x,y,z,te]
-    shaped_image = reshape(image_3d,dim_x,dim_y,dim_te,dim_z);
-    shaped_image = permute(shaped_image,[1,2,4,3]);
+% do processing
+for n=1:number_of_fits
+    tic %start timer   
+    
+	% Read only one file then process it
+	if ~strcmp(data_order,'xyzfile')
+		imagefile=cell2mat(file_list(n));
+		
+		% Read file and get header information
+		[file_path, filename]  = fileparts(imagefile);
+% 		nii = load_nii(imagefile);
+		nii = load_untouch_nii(imagefile);
+		res = nii.hdr.dime.pixdim;
+		res = res(2:4);
+		image_3d = nii.img;
+		[dim_x, dim_y, dim_zn] = size(image_3d);
+		dim_n = size(parameter_list,1);
+		dim_z = dim_zn / dim_n;
+
+		% Reshape image to extract individual decay curves
+		% shaped to be four dimensional with dimensions [x,y,z,te]
+		if strcmp(data_order,'xynz')
+			shaped_image = reshape(image_3d,dim_x,dim_y,dim_n,dim_z);
+			shaped_image = permute(shaped_image,[1,2,4,3]);
+		elseif strcmp(data_order,'xyzn')
+			shaped_image = reshape(image_3d,dim_x,dim_y,dim_z,dim_n);
+% 			shaped_image = permute(shaped_image,[1,2,4,3]);
+		else
+			warning( 'Unknown data order' );
+			return;
+		end
+	% Read all files as all are needed for fit
+	else
+		% For each file in list load and add to larger matrix
+		for m=1:size(file_list,1)
+			imagefile=cell2mat(file_list(m));
+
+			% Read file and get header information
+			[file_path, filename]  = fileparts(imagefile);
+% 			nii = load_nii(imagefile);
+			nii = load_untouch_nii(imagefile);
+			res = nii.hdr.dime.pixdim;
+			res = res(2:4);
+			image_3d = nii.img;
+			[dim_x, dim_y, dim_z] = size(image_3d);
+			dim_n = size(parameter_list,1);
+
+			if m==1
+				shaped_image = zeros([dim_x dim_y dim_z dim_n]);
+			end
+			shaped_image(:,:,:,m) = image_3d;
+		end
+	end
+	
 	
 	% Remove even echoes if requested
 	if odd_echoes
-		dim_te = floor((dim_te+1)/2);
-		temp_image = zeros(dim_x,dim_y,dim_z,dim_te);
-		for m=1:dim_te
+		dim_n = floor((dim_n+1)/2);
+		temp_image = zeros(dim_x,dim_y,dim_z,dim_n);
+		temp_n = zeros(dim_n,1);
+		for m=1:dim_n
 			temp_image(:,:,:,m) = shaped_image(:,:,:,1+2*(m-1));
+			temp_n(m) = parameter_list(1+2*(m-1));
 		end
+		shaped_image = temp_image;
+		parameter_list = temp_n;
 	end
 
 
@@ -114,7 +173,7 @@ for n=1:size(file_list,1)
         job = createMatlabPoolJob(sched, 'configuration', 'NeuroEcon.local','PathDependencies', {p});
         set(job, 'MaximumNumberOfWorkers', 20);
         set(job, 'MinimumNumberOfWorkers', 1);
-        createTask(job, @parallelFit, 1,{te_list,fit_type,shaped_image});
+        createTask(job, @parallelFit, 1,{parameter_list,fit_type,shaped_image,tr});
 
         submit(job)
         waitForState(job)
@@ -123,7 +182,7 @@ for n=1:size(file_list,1)
 
         fit_output = cell2mat(results);
     else
-        fit_output = parallelFit(te_list,fit_type,shaped_image);
+        fit_output = parallelFit(parameter_list,fit_type,shaped_image,tr);
     end
 
     % Collect and reshpae outputs
@@ -167,7 +226,7 @@ for n=1:size(file_list,1)
     save_nii(T2dirnii, fullpathT2);
     save_nii(Rsquareddirnii, fullpathRsquared);
     % Linear_fast does not calculate confidence intervals
-    if ~strcmp(fit_type,'linear_fast')
+    if ~strcmp(fit_type,'linear_fast') || ~strcmp(fit_type,'t1_fa_linear_fit')
         CILowdirnii  = make_nii(confidence_interval_low, res, [1 1 1], [], 'Low 95% confidence interval');
         CIHighdirnii  = make_nii(confidence_interval_high, res, [1 1 1], [], 'High 95% confidence interval');
         save_nii(CILowdirnii, fullpathCILow);

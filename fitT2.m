@@ -1,5 +1,5 @@
 % Performs different types of fits on exponential decay (T1, T2, and T2*) data
-function fit_output = fitT2(te,fit_type,si)
+function fit_output = fitT2(te,fit_type,si,tr)
 
 % Verify all numbers exists
 ok_ = isfinite(te) & isfinite(si);
@@ -38,6 +38,9 @@ elseif(strcmp(fit_type,'t1_fa_fit'))
 elseif(strcmp(fit_type,'linear_fast') || strcmp(fit_type,'t1_fa_linear_fit'))
 	% Skip check as we are doing a fast linear fit
 	r_squared = 2.0;
+elseif(strcmp(fit_type,'t1_ti_exponential_fit'))
+	% Skip check as no linearization exists
+	r_squared = 2.0;
 else
 	ln_si = log(si);
 	Ybar = mean(ln_si(ok_)); 
@@ -53,7 +56,7 @@ else
 end
 
 % Continue if fit is rational
-if r_squared>=0.7
+if r_squared>=0.6
 	if(strcmp(fit_type,'exponential'))
 		% Restrict fits for T2 from 1ms to 2500ms, and coefficient ('rho') from 
 		% 0 to inf
@@ -162,13 +165,14 @@ if r_squared>=0.7
 			'coefficients',{'a','t1'});
 		
 		% Fit the model
-		tr = [8 8 8 8 8 8];
-		[cf_, gof] = fit([te(ok_),tr'],si(ok_),ft_,fo_);
+		tr_array = tr*ones(size(te));
+		[cf_, gof] = fit([te(ok_),tr_array],si(ok_),ft_,fo_);
 
 		% Save Results
 		r_squared = gof.rsquare;
 		confidence_interval = confint(cf_,0.95);
-		rho_fit = cf_.a;
+		% Scale a as it was fit to a scaled dataset
+		rho_fit = cf_.a*max(si);
 		t2_fit   = cf_.t1;
 		t2_95_ci = confidence_interval(:,2);
 	elseif(strcmp(fit_type,'t1_fa_linear_fit'))
@@ -188,7 +192,7 @@ if r_squared>=0.7
 			r_squared = 0;
 		end
 		rho_fit = intercept;
-		t2_fit   = -8/log(slope);
+		t2_fit   = -tr/log(slope);
 		if t2_fit>5000
 			t2_fit = 5001;
 		end
@@ -196,7 +200,33 @@ if r_squared>=0.7
 			t2_fit = -0.5;
 		end
 		t2_95_ci = [-1 -1];
+	elseif(strcmp(fit_type,'t1_ti_exponential_fit'))
+		% te stores the TI in ms
+ 		
+		% scale si, non-linear fit has trouble converging with big numbers
+		si = si./max(si);
 		
+		% Restrict fits for T1 from 0ms to 5000ms, and coefficient ('rho') from 
+		% 0 to inf
+		fo_ = fitoptions('method','NonlinearLeastSquares','Lower',[0 0],'Upper',[Inf   5000]);
+		st_ = [max(si)*10 500 ];
+ 		set(fo_,'Startpoint',st_);
+		%set(fo_,'Weight',w);
+		ft_ =  fittype('abs( a* (1-2*exp(-ti/t1)-exp(-tr/t1) ) )',...
+			'dependent',{'si'},'independent',{'ti','tr'},...
+			'coefficients',{'a','t1'});
+		
+		% Fit the model
+		tr_array = tr*ones(size(te));
+		[cf_, gof] = fit([te(ok_),tr_array],si(ok_),ft_,fo_);
+
+		% Save Results
+		r_squared = gof.rsquare;
+		confidence_interval = confint(cf_,0.95);
+		% Scale a as it was fit to a scaled dataset
+		rho_fit = cf_.a*max(si);
+		t2_fit   = cf_.t1;
+		t2_95_ci = confidence_interval(:,2);		
 	elseif(strcmp(fit_type,'none'))
 		r_squared = 1;
 		rho_fit = 1;

@@ -1,5 +1,5 @@
 
-function calculateMultiFile(file_list,parameter_list,fit_type,rsquared_threshold,number_cpus,neuroecon,output_basename,email)
+function calculateMultiFile(file_list,parameter_list,fit_type,rsquared_threshold,number_cpus,neuroecon,output_basename,tr,email)
 
 % INPUTS
 %------------------------------------
@@ -113,7 +113,7 @@ if(neuroecon)
 	job = createMatlabPoolJob(sched, 'configuration', 'NeuroEcon.local','PathDependencies', {p});
 	set(job, 'MaximumNumberOfWorkers', 20);
 	set(job, 'MinimumNumberOfWorkers', 1);
-	createTask(job, @parallelFit, 1,{parameter_list,fit_type,shaped_image});
+	createTask(job, @parallelFit, 1,{parameter_list,fit_type,shaped_image,tr});
 
 	submit(job)
 	waitForState(job)
@@ -122,7 +122,7 @@ if(neuroecon)
 
 	fit_output = cell2mat(results);
 else
-	fit_output = parallelFit(parameter_list,fit_type,shaped_image);
+	fit_output = parallelFit(parameter_list,fit_type,shaped_image,tr);
 end
 
 % Collect and reshpae outputs
