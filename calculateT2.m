@@ -76,19 +76,24 @@ end
 
 % return;
 
+% Calculate number of fits
+dim_n = size(parameter_list,1);
+if strcmp(data_order,'xyzfile')
+	number_of_fits = size(file_list,1)/dim_n;
+	if rem(size(file_list,1),dim_n)~=0
+		warning( 'Number of files not evenly divisible by number or parameters' );
+		return;
+	end
+else
+	number_of_fits = size(file_list,1);
+end
+
 % Create parallel processing pool
 if ~neuroecon
     matlabpool('local', number_cpus);
 end
 
 execution_time = zeros(size(file_list,1),1);
-
-% Calculate number of fits
-if strcmp(data_order,'xyzfile')
-	number_of_fits = 1;
-else
-	number_of_fits = size(file_list,1);
-end
 
 % do processing
 for n=1:number_of_fits
@@ -106,7 +111,7 @@ for n=1:number_of_fits
 		res = res(2:4);
 		image_3d = nii.img;
 		[dim_x, dim_y, dim_zn] = size(image_3d);
-		dim_n = size(parameter_list,1);
+% 		dim_n = size(parameter_list,1);
 		dim_z = dim_zn / dim_n;
 
 		% Reshape image to extract individual decay curves
@@ -124,8 +129,8 @@ for n=1:number_of_fits
 	% Read all files as all are needed for fit
 	else
 		% For each file in list load and add to larger matrix
-		for m=1:size(file_list,1)
-			imagefile=cell2mat(file_list(m));
+		for m=1:dim_n
+			imagefile=cell2mat(file_list(m+(n-1)*dim_n));
 
 			% Read file and get header information
 			[file_path, filename]  = fileparts(imagefile);
