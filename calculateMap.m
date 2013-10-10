@@ -1,18 +1,28 @@
 
-function calculateT2(file_list,parameter_list,fit_type,odd_echoes,rsquared_threshold,number_cpus,neuroecon,output_basename,data_order,tr,email)
+function calculateMap(file_list,parameter_list,fit_type,odd_echoes,rsquared_threshold,number_cpus,neuroecon,output_basename,data_order,tr,email)
 
 % INPUTS
 %------------------------------------
 % file_list = {'file1';'file2'};
-%                     % must point to valid nifti files
-% te_list = [10.5 21 31.5 42 52.5 63]';
-%                     % units of ms
+% 					% must point to valid nifti files
+% parameter_list = [10.5 21 31.5 42 52.5 63]';
+% 					% units of ms or degrees
 % fit_type = 'linear_weighted'; 
-%                     % options{'none','linear_simple','linear_weighted','exponential','linear_fast'}
-% number_cpus = 4;    % not used if running on neuroecon
-% neuroecon = 0;      % boolean
+% 					% options{'none','t2_linear_simple','t2_linear_weighted','t2_exponential','t2_linear_fast'
+% 					%			't1_tr_fit','t1_fa_fit','t1_fa_linear_fit','t1_ti_exponential_fit'}
+% odd_echoes = 0;	% boolean, if selected only odd parameters will be
+% 					% used for fit
+% rsquared_threshold = 0.2;
+% 					% all fits with R^2 less than this set to -1
+% number_cpus = 4;	% not used if running on neuroecon
+% neuroecon = 0;	% boolean
+% output_basename = 'foo';
+% 					% base of output filename
+% data_order = 'xyzn';% in what order is the data organized
+% 					% options{'xynz','xyzn','xyzfile'}
+% tr = 20;			% units ms, only used for T1 FA fitting
 % email = srsbarnes@gmail.com;
-%                     % Email will be sent to this address on job completion
+% 					% Email will be sent to this address on job completion
 %------------------------------------
 
 % Sanity check on input
@@ -191,23 +201,23 @@ for n=1:number_of_fits
     end
 
     % Collect and reshpae outputs
-    t2_fit					 = fit_output(:,1);
+    exponential_fit			 = fit_output(:,1);
     rho_fit					 = fit_output(:,2);
     r_squared				 = fit_output(:,3);
     confidence_interval_low	 = fit_output(:,4);
     confidence_interval_high = fit_output(:,5);
 	
 	% Throw out bad results
-	for m=1:size(t2_fit) 
-		if(r_squared(m) < rsquared_threshold && t2_fit(m)~=-2)
+	for m=1:size(exponential_fit) 
+		if(r_squared(m) < rsquared_threshold && exponential_fit(m)~=-2)
 			rho_fit(m) = -1;
-			t2_fit(m) = -1;
+			exponential_fit(m) = -1;
 			confidence_interval_low(m) = -1;
 			confidence_interval_high(m) = -1;
 		end
 	end
 	
-    t2_fit					= reshape(t2_fit, [dim_x, dim_y, dim_z]);
+    exponential_fit			= reshape(exponential_fit, [dim_x, dim_y, dim_z]);
     rho_fit					= reshape(rho_fit,  [dim_x, dim_y, dim_z]); %#ok<NASGU>
     r_squared				= reshape(r_squared, [dim_x, dim_y, dim_z]);
     confidence_interval_low  = reshape(confidence_interval_low, [dim_x, dim_y, dim_z]);
@@ -226,12 +236,12 @@ for n=1:number_of_fits
         , '.nii']);
 
     % Write output
-    T2dirnii = make_nii(t2_fit, res, [1 1 1], [], 'T2 Values');
+    T2dirnii = make_nii(exponential_fit, res, [1 1 1], [], fit_type);
     Rsquareddirnii   = make_nii(r_squared, res, [1 1 1], [], 'R Squared of fit');
     save_nii(T2dirnii, fullpathT2);
     save_nii(Rsquareddirnii, fullpathRsquared);
     % Linear_fast does not calculate confidence intervals
-    if ~strcmp(fit_type,'linear_fast') || ~strcmp(fit_type,'t1_fa_linear_fit')
+    if ~strcmp(fit_type,'t2_linear_fast') && ~strcmp(fit_type,'t1_fa_linear_fit')
         CILowdirnii  = make_nii(confidence_interval_low, res, [1 1 1], [], 'Low 95% confidence interval');
         CIHighdirnii  = make_nii(confidence_interval_high, res, [1 1 1], [], 'High 95% confidence interval');
         save_nii(CILowdirnii, fullpathCILow);
@@ -270,7 +280,7 @@ if ~isempty(email)
 
 	hostname = char( getHostName( java.net.InetAddress.getLocalHost ) );
 	
-    sendmail(email,'T2 star map processing completed',['Hello! Your T2 Calc job on '...
+    sendmail(email,'MRI map processing completed',['Hello! Your Map Calc job on '...
 		,hostname,' is done! compution time was ',datestr(datenum(0,0,0,0,0,total_time),'HH:MM:SS')]);
 end
 

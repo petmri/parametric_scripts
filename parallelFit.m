@@ -1,5 +1,5 @@
-% Parallel wrapper for the T2 fitting algorithm
-function fit_output = parallelFit(te,fit_type,shaped_image,tr)
+% Parallel wrapper for the fitting algorithm
+function fit_output = parallelFit(parameter,fit_type,shaped_image,tr)
 
 [dim_x, dim_y, dim_z, dim_te] = size(shaped_image);
 linear_shape = reshape(shaped_image,dim_x*dim_y*dim_z,dim_te);
@@ -22,7 +22,7 @@ for n=1:parallel_size:number_voxels
 		% note that z will be your iteration
 		si = linear_shape(m,:)';
 		si = cast(si,'double');
-		fit_output(m,:) = fitT2(te,fit_type,si,tr);
+		fit_output(m,:) = fitParameter(parameter,fit_type,si,tr);
 	end
 	% check for cancel
 	if getappdata(h,'canceling')
@@ -31,7 +31,7 @@ for n=1:parallel_size:number_voxels
 	end
 	% update waitbar each "parallel_size"th iteration
 	waitbar(n/number_voxels,h,...
-		sprintf('Completed %d of %d T2 fits',n,number_voxels));
+		sprintf('Completed %d of %d fits',n,number_voxels));
 end
 
 delete(h)       % DELETE the waitbar; don't try to CLOSE it.

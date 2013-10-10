@@ -1,35 +1,35 @@
-function varargout = t2_gui(varargin)
-% T2_GUI MATLAB code for t2_gui.fig
-%      T2_GUI, by itself, creates a new T2_GUI or raises the existing
+function varargout = fitting_gui(varargin)
+% FITTING_GUI MATLAB code for fitting_gui.fig
+%      FITTING_GUI, by itself, creates a new FITTING_GUI or raises the existing
 %      singleton*.
 %
-%      H = T2_GUI returns the handle to a new T2_GUI or the handle to
+%      H = FITTING_GUI returns the handle to a new FITTING_GUI or the handle to
 %      the existing singleton*.
 %
-%      T2_GUI('CALLBACK',hObject,eventData,handles,...) calls the local
-%      function named CALLBACK in T2_GUI.M with the given input arguments.
+%      FITTING_GUI('CALLBACK',hObject,eventData,handles,...) calls the local
+%      function named CALLBACK in FITTING_GUI.M with the given input arguments.
 %
-%      T2_GUI('Property','Value',...) creates a new T2_GUI or raises the
+%      FITTING_GUI('Property','Value',...) creates a new FITTING_GUI or raises the
 %      existing singleton*.  Starting from the left, property value pairs are
-%      applied to the GUI before t2_gui_OpeningFcn gets called.  An
+%      applied to the GUI before fitting_gui_OpeningFcn gets called.  An
 %      unrecognized property name or invalid value makes property application
-%      stop.  All inputs are passed to t2_gui_OpeningFcn via varargin.
+%      stop.  All inputs are passed to fitting_gui_OpeningFcn via varargin.
 %
 %      *See GUI Options on GUIDE's Tools menu.  Choose "GUI allows only one
 %      instance to run (singleton)".
 %
 % See also: GUIDE, GUIDATA, GUIHANDLES
 
-% Edit the above text to modify the response to help t2_gui
+% Edit the above text to modify the response to help fitting_gui
 
-% Last Modified by GUIDE v2.5 10-Jul-2013 15:19:06
+% Last Modified by GUIDE v2.5 10-Oct-2013 14:42:36
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
 gui_State = struct('gui_Name',       mfilename, ...
     'gui_Singleton',  gui_Singleton, ...
-    'gui_OpeningFcn', @t2_gui_OpeningFcn, ...
-    'gui_OutputFcn',  @t2_gui_OutputFcn, ...
+    'gui_OpeningFcn', @fitting_gui_OpeningFcn, ...
+    'gui_OutputFcn',  @fitting_gui_OutputFcn, ...
     'gui_LayoutFcn',  [] , ...
     'gui_Callback',   []);
 if nargin && ischar(varargin{1})
@@ -44,15 +44,15 @@ end
 % End initialization code - DO NOT EDIT
 
 
-% --- Executes just before t2_gui is made visible.
-function t2_gui_OpeningFcn(hObject, eventdata, handles, varargin)
+% --- Executes just before fitting_gui is made visible.
+function fitting_gui_OpeningFcn(hObject, eventdata, handles, varargin)
 % This function has no output args, see OutputFcn.
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-% varargin   command line arguments to t2_gui (see VARARGIN)
+% varargin   command line arguments to fitting_gui (see VARARGIN)
 
-% Choose default command line output for t2_gui
+% Choose default command line output for fitting_gui
 handles.output = hObject;
 
 % Create structure to hold file list
@@ -61,12 +61,12 @@ handles.file_list = {};
 % Update handles structure
 guidata(hObject, handles);
 
-% UIWAIT makes t2_gui wait for user response (see UIRESUME)
+% UIWAIT makes fitting_gui wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
 
 
 % --- Outputs from this function are returned to the command line.
-function varargout = t2_gui_OutputFcn(hObject, eventdata, handles)
+function varargout = fitting_gui_OutputFcn(hObject, eventdata, handles)
 % varargout  cell array for returning output args (see VARARGOUT);
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -210,7 +210,7 @@ function ok_button_Callback(hObject, eventdata, handles) %#ok<*INUSL>
 
 disp('User selected Ok')
 file_list = handles.file_list;
-te_list = str2num(get(handles.te_box,'String'))'; %#ok<ST2NM>
+parameter_list = str2num(get(handles.te_box,'String'))'; %#ok<ST2NM>
 fit_type = get(get(handles.fittype,'SelectedObject'),'Tag');
 data_order = get(get(handles.data_order,'SelectedObject'),'Tag');
 % single_fit = get(handles.single_fit,'Value');
@@ -237,7 +237,7 @@ delete(handles.figure1);
 % disp(email);
 
 % Call T2 Function
-calculateT2(file_list,te_list,fit_type,odd_echoes,rsquared_threshold, number_cpus, neuroecon, output_basename,data_order,tr, email);
+calculateMap(file_list,parameter_list,fit_type,odd_echoes,rsquared_threshold, number_cpus, neuroecon, output_basename,data_order,tr, email);
 % if single_fit
 % 	calculateMultiFile(file_list,te_list,fit_type,rsquared_threshold, number_cpus, neuroecon, output_basename,tr, email);
 % else
