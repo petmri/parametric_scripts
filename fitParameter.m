@@ -56,7 +56,7 @@ else
 end
 
 % Continue if fit is rational
-if r_squared>=0.4
+if r_squared>=0.2
 	if(strcmp(fit_type,'t2_exponential'))
 		% Restrict fits for T2 from 1ms to 2500ms, and coefficient ('rho') from 
 		% 0 to inf
