@@ -1,7 +1,38 @@
 
-function calculateMap(file_list,parameter_list,fit_type,odd_echoes,rsquared_threshold,number_cpus,neuroecon,output_basename,data_order,tr,email)
+function [single_IMG, errormsg] = calculateMap(JOB_struct);
 
-% INPUTS
+% Initialize empty variables
+single_IMG = '';
+errormsg   = '';
+
+% Sanity check on input
+if nargin < 1
+    warning( 'Arguments missing' );
+    return;
+end
+
+% Extract parameters
+
+ number_cps     = JOB_struct(1).number_cpus;
+ neuroecon      = JOB_struct(1).neuroecon;
+ email          = JOB_struct(1).email;
+ cur_dataset    = JOB_struct(1).file_list;
+ save_log       = JOB_struct(1).save_log;
+ email_log      = JOB_struct(1).email_log;
+ separate_logs  = JOB_struct(1).separate_logs;
+ current_dir    = JOB_struct(1).current_dir;
+ log_name       = JOB_struct(1).log_name;
+ submit         = JOB_struct(1).submit;
+
+% Extract INPUTS
+
+file_list           = cur_dataset.file_list;
+parameter_list      = cur_dataset.parameters;
+fit_type            = cur_dataset.fit_type;
+odd_echoes          = cur_dataset.odd_echoes;
+rsquared_threshold  = cur_dataset.rsquared;
+tr                  = cur_dataset.tr;
+
 %------------------------------------
 % file_list = {'file1';'file2'};
 % 					% must point to valid nifti files
@@ -21,18 +52,13 @@ function calculateMap(file_list,parameter_list,fit_type,odd_echoes,rsquared_thre
 % data_order = 'xyzn';% in what order is the data organized
 % 					% options{'xynz','xyzn','xyzfile'}
 % tr = 20;			% units ms, only used for T1 FA fitting
-% email = srsbarnes@gmail.com;
-% 					% Email will be sent to this address on job completion
+% submit            % Let's the function know if this is a tester job of
+%                     actual file generation
+
 %------------------------------------
 
-% Sanity check on input
-if nargin < 10
-    warning( 'Arguments missing' );
-    return;
-end
-if nargin < 11
-    email = '';
-end
+
+
 ok_ = isfinite(parameter_list) & ~isnan(parameter_list);
 if ~all( ok_ ) || isempty(parameter_list)
 	warning( 'TE/TR/FA/TI list contains invalid values' );
@@ -57,6 +83,7 @@ for m=size(file_list,1):-1:1
     end
 end
 
+if submit
 % fit_type = 'none';
 disp(['Starting execution at ', datestr(now,'mmmm dd, yyyy HH:MM:SS')])
 disp('User selected files: ');
@@ -73,8 +100,6 @@ disp('User selected email: ');
 disp(email);
 disp('User selected data order: ');
 disp(data_order);
-disp('User selected r^2 threshold: ');
-disp(rsquared_threshold);
 disp('User selected output basename: ');
 disp(output_basename);
 disp('User selected only odd echoes: ');
@@ -83,6 +108,10 @@ if ~isempty(strfind(fit_type,'t1')) && ~isempty(strfind(fit_type,'fa'))
 	disp('User selected tr: ');
 	disp(tr);
 end
+end
+disp('User selected r^2 threshold: ');
+disp(rsquared_threshold);
+
 
 % return;
 
@@ -91,7 +120,8 @@ dim_n = size(parameter_list,1);
 if strcmp(data_order,'xyzfile')
 	number_of_fits = size(file_list,1)/dim_n;
 	if rem(size(file_list,1),dim_n)~=0
-		warning( 'Number of files not evenly divisible by number or parameters' );
+        warning on
+		errormsg = warning( 'Number of files not evenly divisible by number or parameters' );
 		return;
 	end
 else
@@ -99,7 +129,11 @@ else
 end
 
 % Create parallel processing pool
-if ~neuroecon
+if ~neuroecon && exist('matlabpool') && submit
+    s = matlabpool('size');   
+    if s
+        matlabpool close 
+    end
     matlabpool('local', number_cpus);
 end
 
@@ -132,8 +166,10 @@ for n=1:number_of_fits
 		elseif strcmp(data_order,'xyzn')
 			shaped_image = reshape(image_3d,dim_x,dim_y,dim_z,dim_n);
 % 			shaped_image = permute(shaped_image,[1,2,4,3]);
-		else
+        else
+            warning on
 			warning( 'Unknown data order' );
+            errormsg = warning( 'Number of files not evenly divisible by number or parameters' );
 			return;
 		end
 	% Read all files as all are needed for fit
@@ -171,7 +207,24 @@ for n=1:number_of_fits
 		end
 		shaped_image = temp_image;
 		parameter_list = temp_n;
-	end
+    end
+    
+    % Change fittype to linear if needed for visualization
+    if ~submit
+        
+        if ~isempty(strfind(fit_type,'t2'))
+            fit_type = 't2_linear_fast';
+        elseif ~isempty(strfind(fit_type,'t1_fa'))
+            fit_type = 't1_fa_linear_fit';
+        elseif ~isempty(strfind(fit_type, 'ADC'))
+            fit_type = 'ADC_linear_simple';
+        else
+            % EDIT NEEDED. 
+            % Currently, no preview available for other types of fitting
+        end
+    end
+            
+        
 
 
     % Run Fitting Algorithms
@@ -200,7 +253,7 @@ for n=1:number_of_fits
         fit_output = parallelFit(parameter_list,fit_type,shaped_image,tr);
     end
 
-    % Collect and reshpae outputs
+    % Collect and reshape outputs
     exponential_fit			 = fit_output(:,1);
     rho_fit					 = fit_output(:,2);
     r_squared				 = fit_output(:,3);
@@ -223,7 +276,7 @@ for n=1:number_of_fits
     confidence_interval_low  = reshape(confidence_interval_low, [dim_x, dim_y, dim_z]);
     confidence_interval_high = reshape(confidence_interval_high, [dim_x, dim_y, dim_z]);
 
-
+if submit
 
     % Create output names
     fullpathT2 = fullfile(file_path, [output_basename, '_', fit_type,'_', filename ...
@@ -254,10 +307,24 @@ for n=1:number_of_fits
     disp(['Execution time was: ',datestr(datenum(0,0,0,0,0,execution_time(n)),'HH:MM:SS')]);
     disp('Map saved to: ');
     disp(fullpathT2);
+    
+    number_cps, neuroecon, separate_logs, log_name, cur_dataset, submit
+    
+    if separate_logs
+        log_name = strrep(fullpathT2, 'nii', 'log');
+        save(log_name, 'cur_dataset'
+        
+    
+    single_IMG = 1;
+else
+    % Process R2 map for quick visualization
+    single_IMG = r_squared;
+end
+    
 end
 
 % Close parallel processing pool
-if ~neuroecon
+if ~neuroecon && exist('matlabpool') && submit
     matlabpool close;
 end
 

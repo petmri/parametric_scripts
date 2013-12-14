@@ -22,7 +22,7 @@ function varargout = fitting_gui(varargin)
 
 % Edit the above text to modify the response to help fitting_gui
 
-% Last Modified by GUIDE v2.5 12-Dec-2013 19:22:46
+% Last Modified by GUIDE v2.5 13-Dec-2013 23:39:55
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -63,9 +63,16 @@ handles.datasets = 0;
 
 % initialize r2 graph
 axes(handles.r2graph)
-imagesc(zeros(100,100))
+%imagesc(zeros(100,100))
+imshow('REJ.jpg');
 set(handles.r2graph, 'XTick', []);
 set(handles.r2graph, 'YTick', []);
+
+set(handles.current_dir, 'String', pwd);
+
+% initialize masterlog name
+master_name = ['ROCKETSHIP_MAPPING_' strrep(datestr(now), ' ', '_') '.log'];
+set(handles.log_name, 'String', master_name);
 
 % Update handles structure
 guidata(hObject, handles);
@@ -236,20 +243,36 @@ function ok_button_Callback(hObject, eventdata, handles) %#ok<*INUSL>
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-disp('User selected Ok')
-file_list = handles.file_list;
-parameter_list = get(handles.te_box,'String'); %#ok<ST2NM>
-fit_type = get(get(handles.fittype,'SelectedObject'),'Tag');
-data_order = get(get(handles.data_order,'SelectedObject'),'Tag');
-% single_fit = get(handles.single_fit,'Value');
-number_cpus = str2num(get(handles.number_cpus,'String')); %#ok<ST2NM>
-neuroecon = get(handles.neuroecon,'Value');
-email = get(handles.email_box,'String');
-output_basename = get(handles.output_basename,'String');
-odd_echoes = get(handles.odd_echoes, 'Value');
-rsquared_threshold = str2num(get(handles.rsquared_threshold, 'String')); %#ok<ST2NM>
-tr = str2num(get(handles.tr, 'String')); %#ok<ST2NM>
+disp('User selected Submit Jobs')
+% file_list = handles.file_list;
+% parameter_list = get(handles.te_box,'String'); %#ok<ST2NM>
+% fit_type = get(get(handles.fittype,'SelectedObject'),'Tag');
+% data_order = get(get(handles.data_order,'SelectedObject'),'Tag');
+% % single_fit = get(handles.single_fit,'Value');
+% number_cpus = str2num(get(handles.number_cpus,'String')); %#ok<ST2NM>
+% neuroecon = get(handles.neuroecon,'Value');
+% email = get(handles.email_box,'String');
+% output_basename = get(handles.output_basename,'String');
+% odd_echoes = get(handles.odd_echoes, 'Value');
+% rsquared_threshold = str2num(get(handles.rsquared_threshold, 'String')); %#ok<ST2NM>
+% tr = str2num(get(handles.tr, 'String')); %#ok<ST2NM>
 
+% All files now in file_list structure
+%{
+handles.file_list().file_list: file_list
+handles.file_list().parameters: parameter_list
+handles.file_list().fit_type: fit_type
+handles.file_list().data_order: xyzn, xynz, xyz/file
+handles.file_list().output_basename: outputbasename
+handles.file_list().odd_echoes: odd_echoes
+handles.file_list().rsquared: rsquared_threshold
+handles.file_list().tr: tr
+%}
+
+JOB_struct = setup_job(handles);
+submit = 1;
+dataset_num = 0; % 0 for all files
+ 
 delete(handles.figure1);
 % disp('User selected files: ');
 % disp(file_list);
@@ -265,7 +288,11 @@ delete(handles.figure1);
 % disp(email);
 
 % Call T2 Function
-calculateMap(file_list,parameter_list,fit_type,odd_echoes,rsquared_threshold, number_cpus, neuroecon, output_basename,data_order,tr, email);
+[single_IMG submit data_setnum] = calculateMap_batch(JOB_struct, submit, dataset_num);
+
+%calculateMap(file_list,parameter_list,fit_type,odd_echoes,rsquared_threshold, number_cpus, neuroecon, output_basename,data_order,tr, email);
+
+
 % if single_fit
 % 	calculateMultiFile(file_list,te_list,fit_type,rsquared_threshold, number_cpus, neuroecon, output_basename,tr, email);
 % else
@@ -373,6 +400,7 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
+
 % --- Executes when selected object is changed in fittype.
 function fittype_SelectionChangeFcn(hObject, eventdata, handles)
 % hObject    handle to the selected object in fittype 
@@ -416,7 +444,17 @@ else
 end
 
 handles.file_list(batch_selected).tr = '';
+handles.file_list(batch_selected).fit_type = fit_type;
 handles.file_list(batch_selected).output_basename = get(handles.output_basename, 'String');
+
+JOB_struct = setup_job(handles);
+submit = 1;
+dataset_num = batch_selected;
+
+[single_IMG submit data_setnum] = calculateMap_batch(JOB_struct, submit, dataset_num);
+
+
+
 
 % Update handles structure
 guidata(hObject, handles);
@@ -437,6 +475,12 @@ set(handles.r2slider, 'Value', str2double(get(hObject,'String')));
 batch_selected = get(handles.batch_set,'Value');
 
 handles.file_list(batch_selected).rsquared = str2double(get(hObject,'String'));
+
+JOB_struct = setup_job(handles);
+submit = 1;
+dataset_num = batch_selected;
+
+[single_IMG submit data_setnum] = calculateMap_batch(JOB_struct, submit, dataset_num);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -654,6 +698,12 @@ batch_selected = get(handles.batch_set,'Value');
 
 handles.file_list(batch_selected).rsquared = str2double(get(hObject,'String'));
 
+JOB_struct = setup_job(handles);
+submit = 1;
+dataset_num = batch_selected;
+
+[single_IMG submit data_setnum] = calculateMap_batch(JOB_struct, submit, dataset_num);
+
 
 
 % --- Executes during object creation, after setting all properties.
@@ -725,3 +775,186 @@ function xynz_ButtonDownFcn(hObject, eventdata, handles)
 % hObject    handle to xynz (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes when selected object is changed in data_order.
+function data_order_SelectionChangeFcn(hObject, eventdata, handles)
+% hObject    handle to the selected object in data_order 
+% eventdata  structure with the following fields (see UIBUTTONGROUP)
+%	EventName: string 'SelectionChanged' (read only)
+%	OldValue: handle of the previously selected object or empty if none was selected
+%	NewValue: handle of the currently selected object
+% handles    structure with handles and user data (see GUIDATA)
+
+% Update handles structure
+guidata(hObject, handles);
+
+% Get Selected Dataset
+batch_selected = get(handles.batch_set,'Value');
+
+fit_type = get(get(handles.fittype,'SelectedObject'),'Tag');
+if ~isempty(strfind(fit_type,'xyzn'))
+	handles.file_list(batch_selected).data_order = 'xyzn';
+
+elseif ~isempty(strfind(fit_type, 'xynz'))
+    handles.file_list(batch_selected).data_order = 'xynz';
+  
+elseif ~isempty(strfind(fit_type, 'xyzfile'));
+ handles.file_list(batch_selected).data_order = 'xyzfile';
+   
+else
+    %Nothing right now
+    
+end
+
+
+set(handles.filename_box,'String',list, 'Value',1);
+% Update handles structure
+guidata(hObject, handles);
+
+
+% --- Executes on button press in save_log.
+function save_log_Callback(hObject, eventdata, handles)
+% hObject    handle to save_log (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of save_log
+guidata(hObject, handles);
+
+curtoggle = get(hObject,'Value');
+
+if(curtoggle)
+
+    set(handles.email_log,'Enable','on');
+    set(handles.separate_logs, 'Enable', 'on');
+else
+    %No log save, need to uncheck everything else
+    set(handles.email_log, 'Value', 0);
+    set(handles.separate_logs, 'Value', 0);
+    set(handles.email_log,'Enable','off');
+    set(handles.separate_logs, 'Enable', 'off');
+end
+
+% Update handles structure
+guidata(hObject, handles);
+
+
+% --- Executes on button press in email_log.
+function email_log_Callback(hObject, eventdata, handles)
+% hObject    handle to email_log (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of email_log
+
+
+% --- Executes on button press in separate_logs.
+function separate_logs_Callback(hObject, eventdata, handles)
+% hObject    handle to separate_logs (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of separate_logs
+
+
+
+function edit13_Callback(hObject, eventdata, handles)
+% hObject    handle to choose_log (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of choose_log as text
+%        str2double(get(hObject,'String')) returns contents of choose_log as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function choose_log_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to choose_log (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in choose_log.
+function choose_log_Callback(hObject, eventdata, handles)
+% hObject    handle to choose_log (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+guidata(hObject, handles);
+folder_name = uigetdir(pwd, 'Choose Location to store master log');
+set(handles.current_dir, 'String', folder_name);
+guidata(hObject, handles);
+
+
+% --- Executes during object creation, after setting all properties.
+function log_name_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to log_name (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes when figure1 is resized.
+function figure1_ResizeFcn(hObject, eventdata, handles)
+% hObject    handle to figure1 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes on button press in old_log.
+function old_log_Callback(hObject, eventdata, handles)
+% hObject    handle to old_log (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+[FileName,PathName,FilterIndex] = uigetfile(fullfile(pwd, '*.log'),'Select old batch log');
+
+%Error handling add here
+set(handles.do_all, 'Enable', 'on');
+
+guidata(hObject, handles);
+
+
+
+% --- Executes on button press in save_dat.
+function save_dat_Callback(hObject, eventdata, handles)
+% hObject    handle to save_dat (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of save_dat
+
+
+% --- Executes on selection change in do_all.
+function do_all_Callback(hObject, eventdata, handles)
+% hObject    handle to do_all (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns do_all contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from do_all
+
+
+% --- Executes during object creation, after setting all properties.
+function do_all_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to do_all (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: popupmenu controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
