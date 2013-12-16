@@ -843,6 +843,10 @@ dataset_num = batch_selected;
 [errormsg] = quick_check(handles);
 handles = disp_error(errormsg, handles);
 
+% Update handles structure
+handles = update_parameters(handles, batch_selected);
+JOB_struct = setup_job(handles);
+
 if isempty(errormsg)
     [single_IMG submit data_setnum errormsg] = calculateMap_batch(JOB_struct, submit, dataset_num);
     

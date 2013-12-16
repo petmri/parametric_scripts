@@ -9,6 +9,6 @@ function handles = visualize_R2(handles, single_IMG)
     set(handles.r2graph, 'YTick', []);
     handles.single_IMG = single_IMG;
     set(handles.slice_total, 'String', ['/ ' num2str(size(single_IMG,3))]);
-    set(handles.slice_slider, 'Min', 1));
+    set(handles.slice_slider, 'Min', 1);
     set(handles.slice_slider, 'Max', size(single_IMG,3));
     handles.single_IMG = single_IMG;
