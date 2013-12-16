@@ -9,8 +9,10 @@ function JOB_struct = setup_job(handles)
  save_log       = get(handles.save_log, 'Value');
  email_log      = get(handles.email_log, 'Value');
  separate_logs  = get(handles.separate_logs, 'Value');
+ save_txt       = get(handles.save_txt, 'Value');
  current_dir    = get(handles.current_dir, 'String');
  log_name       = get(handles.log_name, 'String');
+
  
  JOB_struct(1).number_cpus = number_cpus;
  JOB_struct(1).neuroecon = neuroecon;
@@ -21,5 +23,6 @@ function JOB_struct = setup_job(handles)
  JOB_struct(1).separate_logs = separate_logs;
  JOB_struct(1).current_dir = current_dir;
  JOB_struct(1).log_name = log_name;
-
+ JOB_struct(1).save_txt = save_txt;
+ 
  

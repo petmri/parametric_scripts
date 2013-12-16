@@ -17,13 +17,17 @@ setappdata(h,'canceling',0)
 cancel_button = false;
 
 for n=1:parallel_size:number_voxels
+    
 	parfor m = n:min(n+(parallel_size-1),number_voxels)
 		% iteration code here
 		% note that z will be your iteration
 		si = linear_shape(m,:)';
 		si = cast(si,'double');
+        
 		fit_output(m,:) = fitParameter(parameter,fit_type,si,tr);
-	end
+    end
+    
+    
 	% check for cancel
 	if getappdata(h,'canceling')
 		cancel_button = true;
