@@ -22,7 +22,7 @@ function varargout = fitting_gui(varargin)
 
 % Edit the above text to modify the response to help fitting_gui
 
-% Last Modified by GUIDE v2.5 15-Dec-2013 22:17:46
+% Last Modified by GUIDE v2.5 17-Dec-2013 20:46:46
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -77,6 +77,21 @@ handles.file_list(1).file_list = {};
 master_name = ['ROCKETSHIP_MAPPING_' strrep(datestr(now), ' ', '_') '.log'];
 set(handles.log_name, 'String', master_name);
 
+% Create parallel processing pool during gui
+
+% Find the maximum cluster
+ myCluster = parcluster('local');
+set(handles.number_cpus, 'String', num2str(myCluster.NumWorkers));
+
+% if exist('matlabpool')
+%     s = matlabpool('size');
+%     if s
+%         matlabpool close
+%     end
+%     matlabpool('local', str2num(get(handles.number_cpus, 'String')));
+% end
+
+
 % Update handles structure
 guidata(hObject, handles);
 
@@ -121,7 +136,7 @@ if strcmp(list,'No Datasets')
     
     set(handles.batch_set,'String',list, 'Value',1);
     set(handles.batch_total, 'String', num2str(handles.datasets), 'Value', 1);
-     handles.file_list(handles.datasets).file_list = {};
+    handles.file_list(handles.datasets).file_list = {};
     guidata(hObject, handles);
 end
 
@@ -310,10 +325,8 @@ handles.file_list().tr: tr
 %}
 
 % If do_all toggled, set to_do for all file_list to 1
-if get(handles.do_all, 'Value')
-    
-    file_list = handles.file_list;
-    
+if get(handles.do_all, 'Value')   
+    file_list = handles.file_list;   
     for i = 1:numel(file_list)
         file_list(i).to_do = 1;
     end
@@ -321,9 +334,24 @@ if get(handles.do_all, 'Value')
 end
 
 
+[errormsg] = quick_check(handles);
+handles = disp_error(errormsg, handles);
+
+% Reset to_do toggle if needed.
+
+if get(handles.redo_done, 'Value')
+    
+    list = handles.file_list;
+    
+    for i = 1:numel(list)
+        handles.file_list(i).to_do = 1;
+    end
+end
+
 % Update handles structure
 handles = update_parameters(handles, batch_selected);
 JOB_struct = setup_job(handles);
+
 
 submit = 1;
 dataset_num = 0; % 0 for all files
@@ -380,6 +408,10 @@ function number_cpus_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'String') returns contents of number_cpus as text
 %        str2double(get(hObject,'String')) returns contents of number_cpus as a double
+
+myCluster = parcluster('local');
+set(handles.number_cpus, 'String', num2str(min(str2num(get(hObject,'String')),myCluster.NumWorkers)));
+
 
 
 % --- Executes during object creation, after setting all properties.
@@ -730,15 +762,20 @@ cur_batch = get(hObject,'Value');
 
 list = handles.file_list(cur_batch).file_list;
 
+%Remove the directory path to allow nice visualization
+list = visualize_list(list);
+
 set(handles.filename_box,'String',list, 'Value',1);
 
 set(handles.output_basename,'String',handles.file_list(cur_batch).output_basename);
 
-set(handles.tr,'Enable',handles.file_list(cur_batch).tr);
+set(handles.tr,'String',handles.file_list(cur_batch).tr);
 
 guidata(hObject, handles);
 
 set(handles.dataset_num, 'String', num2str(cur_batch));
+
+guidata(hObject, handles);
 
 
 
@@ -776,14 +813,12 @@ else
 end
 
 
-
-
 set(handles.batch_set,'String',list, 'Value',1);
 set(handles.batch_total, 'String', num2str(handles.datasets), 'Value', 1);
 
 cur_batch = handles.datasets;
 handles.file_list(cur_batch).output_basename = '';
-handles.file_list(cur_batch).tr = 'off';
+handles.file_list(cur_batch).tr = str2num(get(handles.tr, 'String'));
 handles.file_list(cur_batch).rsquared = str2num(get(handles.rsquared_threshold, 'String'));
 handles.file_list(cur_batch).curslice = str2num(get(handles.slice_num, 'String'));;
 handles.file_list(handles.datasets).file_list = {};
@@ -803,15 +838,21 @@ function remove_batch_Callback(hObject, eventdata, handles)
 index_selected = get(handles.batch_set,'Value');
 list = get(handles.batch_set,'String');
 
-list(end,:) = [];
+list(index_selected,:) = [];
 handles.file_list(index_selected) = [];
-
-set(handles.batch_set,'String',list, 'Value',1)
-
 handles.datasets = handles.datasets - 1;
 set(handles.batch_total, 'String', num2str(handles.datasets), 'Value', 1);
 
-set(handles.dataset_num, 'String', 'Reselect Dataset');
+if handles.datasets < 1
+    set(handles.dataset_num, 'String', 'No current Dataset');
+    list = '';
+    list(1,:) = 'No Datasets';
+else
+    set(handles.dataset_num, 'String', 'Reselect Dataset');
+end
+    set(handles.batch_set,'String',list, 'Value',1)
+
+set(handles.filename_box, 'String', '');
 
 guidata(hObject, handles);
 
@@ -843,11 +884,12 @@ dataset_num = batch_selected;
 [errormsg] = quick_check(handles);
 handles = disp_error(errormsg, handles);
 
-% Update handles structure
-handles = update_parameters(handles, batch_selected);
-JOB_struct = setup_job(handles);
+
 
 if isempty(errormsg)
+    % Update handles structure
+handles = update_parameters(handles, batch_selected);
+JOB_struct = setup_job(handles);
     [single_IMG submit data_setnum errormsg] = calculateMap_batch(JOB_struct, submit, dataset_num);
     
     if ~isempty(errormsg)
@@ -861,6 +903,7 @@ if isempty(errormsg)
         %Display Image
         
         handles = visualize_R2(handles, single_IMG);
+        
         
     end
 end
@@ -902,9 +945,17 @@ end
 
 set(handles.slice_slider, 'Value', cur_slice);
 
-if exist('handles.single_IMG')
+% Make sure that single_IMG exists
+try
+    check_single_IMG = handles.single_IMG;
+    check_single_IMG = 1;
+catch
+    check_single_IMG = 0;
+end
+
+if check_single_IMG
     
-    handles = visualize_R2(handles, single_IMG);
+    handles = visualize_R2(handles, handles.single_IMG);
 else
     
     
@@ -946,9 +997,16 @@ end
 
 set(handles.slice_num, 'String', num2str(slice_slide));
 
-if exist('handles.single_IMG')
+try
+    check_single_IMG = handles.single_IMG;
+    check_single_IMG = 1;
+catch
+    check_single_IMG = 0;
+end
+
+if check_single_IMG
     
-    handles = visualize_R2(handles, single_IMG);
+    handles = visualize_R2(handles, handles.single_IMG);
 else
     
     
@@ -1128,7 +1186,10 @@ function old_log_Callback(hObject, eventdata, handles)
 
 %Error handling add here
 
-if ~exist(fullpath(PathName, FileName))
+if ~FileName
+% Cancel, nothing
+return
+elseif ~exist(fullpath(PathName, FileName))
     warning([FileName ' does not exist.']);
     set(handles.status, 'String', [FileName ' does not exist.']);
     set(handles.status, 'ForegroundColor', 'red');
@@ -1207,3 +1268,151 @@ function slider5_CreateFcn(hObject, eventdata, handles)
 if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor',[.9 .9 .9]);
 end
+
+
+% --------------------------------------------------------------------
+function fittype_ButtonDownFcn(hObject, eventdata, handles)
+% hObject    handle to fittype (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes on key press with focus on remove_files and none of its controls.
+function remove_files_KeyPressFcn(hObject, eventdata, handles)
+% hObject    handle to remove_files (see GCBO)
+% eventdata  structure with the following fields (see UICONTROL)
+%	Key: name of the key that was pressed, in lower case
+%	Character: character interpretation of the key(s) that was pressed
+%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes on button press in file_up.
+function file_up_Callback(hObject, eventdata, handles)
+% hObject    handle to file_up (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Update handles structure
+guidata(hObject, handles);
+
+
+% Check if there is a dataset already. If not, do nothing.
+list = get(handles.batch_set,'String');
+
+if strcmp(list,'No Datasets')
+    
+else
+    % Get the list of files present
+    list = get(handles.filename_box,'String');
+    
+    % Get Selected Dataset
+    batch_selected = get(handles.batch_set,'Value');
+    
+    % Get selected File
+    file_selected  = get(handles.filename_box, 'Value');
+    
+    if file_selected > 1
+        curfile_list = handles.file_list(batch_selected).file_list;
+        
+        newfile_list = curfile_list;
+        newlist      = list;
+        
+        newfile_list(file_selected-1) = curfile_list(file_selected);
+        newlist(file_selected-1)      = list(file_selected);
+        
+        newfile_list(file_selected)   = curfile_list(file_selected-1);
+        newlist(file_selected)        = list(file_selected-1);
+        
+        handles.file_list(batch_selected).file_list = newfile_list;
+        set(handles.filename_box,'String',newlist, 'Value',1)
+        
+        % Update handles structure
+        handles = update_parameters(handles, batch_selected);
+        JOB_struct = setup_job(handles);
+        set(handles.filename_box, 'Value', file_selected-1);
+    end
+end
+
+guidata(hObject, handles);
+
+
+
+
+
+
+
+
+
+
+
+% --- Executes on button press in file_down.
+function file_down_Callback(hObject, eventdata, handles)
+% hObject    handle to file_down (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Update handles structure
+guidata(hObject, handles);
+
+% Check if there is a dataset already. If not, do nothing.
+list = get(handles.batch_set,'String');
+
+if strcmp(list,'No Datasets')
+    
+else
+    % Get the list of files present
+    list = get(handles.filename_box,'String');
+    % Get Selected Dataset
+    batch_selected = get(handles.batch_set,'Value');
+    
+    % Get selected File
+    file_selected  = get(handles.filename_box, 'Value');
+    
+    if file_selected < numel(list);
+        curfile_list = handles.file_list(batch_selected).file_list;
+        
+        newfile_list = curfile_list;
+        newlist      = list;
+        
+        newfile_list(file_selected+1) = curfile_list(file_selected);
+        newlist(file_selected+1)      = list(file_selected);
+        
+        newfile_list(file_selected)   = curfile_list(file_selected+1);
+        newlist(file_selected)        = list(file_selected+1);
+        
+        handles.file_list(batch_selected).file_list = newfile_list;
+        set(handles.filename_box,'String',newlist, 'Value',1)
+        
+        % Update handles structure
+        handles = update_parameters(handles, batch_selected);
+        JOB_struct = setup_job(handles);
+        set(handles.filename_box, 'Value', file_selected+1);
+    end
+end
+guidata(hObject, handles);
+
+
+% --- If Enable == 'on', executes on mouse press in 5 pixel border.
+% --- Otherwise, executes on mouse press in 5 pixel border or over file_up.
+function file_up_ButtonDownFcn(hObject, eventdata, handles)
+% hObject    handle to file_up (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --- If Enable == 'on', executes on mouse press in 5 pixel border.
+% --- Otherwise, executes on mouse press in 5 pixel border or over add_files.
+function add_files_ButtonDownFcn(hObject, eventdata, handles)
+% hObject    handle to add_files (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes on button press in redo_done.
+function redo_done_Callback(hObject, eventdata, handles)
+% hObject    handle to redo_done (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of redo_done

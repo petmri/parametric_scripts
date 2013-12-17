@@ -1,9 +1,10 @@
 
-function [single_IMG, errormsg, JOB_struct] = calculateMap(JOB_struct);
+function [single_IMG, errormsg, JOB_struct, new_txtname] = calculateMap(JOB_struct);
 
 % Initialize empty variables
 single_IMG = '';
 errormsg   = '';
+new_txtname   = '';
 
 % Sanity check on input
 if nargin < 1
@@ -265,7 +266,7 @@ for n=1:number_of_fits
         job = createMatlabPoolJob(sched, 'configuration', 'NeuroEcon.local','PathDependencies', {p});
         set(job, 'MaximumNumberOfWorkers', 20);
         set(job, 'MinimumNumberOfWorkers', 1);
-        createTask(job, @parallelFit, 1,{parameter_list,fit_type,shaped_image,tr});
+        createTask(job, @parallelFit, 1,{parameter_list,fit_type,shaped_image,tr, submit});
         
         submit(job)
         waitForState(job)
@@ -275,7 +276,7 @@ for n=1:number_of_fits
         fit_output = cell2mat(results);
     else
         
-        fit_output = parallelFit(parameter_list,fit_type,shaped_image,tr);
+        fit_output = parallelFit(parameter_list,fit_type,shaped_image,tr, submit);
         
         
     end
@@ -367,11 +368,9 @@ if separate_logs && submit
     log_name = strrep(fullpathT2, '.nii', '.log');
     new_txtname=strrep(log_name, '.log', '_log.txt');
     
-    if save_log
-        
-       
-        
+    if save_log      
         save(log_name, 'JOB_struct', '-mat');
+        disp(['Saved log at: ' log_name]);
     end
     
     if save_txt

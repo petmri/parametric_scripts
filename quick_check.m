@@ -33,16 +33,19 @@ elseif isempty(get(get(handles.data_order,'SelectedObject'),'Tag'));
     %6. No data_order entered
     warning('No data order entered');
     errormsg = 'No data order entered';
-elseif numel(str2num(get(handles.te_box, 'String'))) < numel(handles.file_list(batch_selected).file_list);
+elseif numel(str2num(get(handles.te_box, 'String'))) ~= numel(handles.file_list(batch_selected).file_list);
     %7. Parameter list less than number of files
-    warning('Not enough parameters');
-    errormsg = 'Not enough parameters';
+    warning('Wrong number of parameters');
+    errormsg = 'Wrong number of parameters';
 elseif numel(str2num(get(handles.te_box, 'String'))) == 1;
     %8. Parameter list single, not error, but may return bad
     warning('Only one parameter entered');
 elseif isempty(get(handles.tr, 'String'))
     warning('TR not defined')
     errormsg = 'TR not defined';
+elseif numel(handles.file_list(batch_selected).file_list) > 1 && ~strcmp(get(get(handles.data_order,'SelectedObject'),'Tag'), 'xyzfile')
+     warning('Multiple files present')
+    errormsg = 'Multiple files present';
 else
     %Rough check ok
 end

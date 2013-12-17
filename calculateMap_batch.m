@@ -4,7 +4,6 @@ function [single_IMG, submit, dataset_num, errormsg] = calculateMap_batch(JOB_st
 
 %Initialize error checks
 errormsg = '';
-errorlog = '';
 
 if submit
     % Lodging a batch job
@@ -22,7 +21,7 @@ if submit
             CUR_JOB(1).file_list = {};
             CUR_JOB(1).file_list(1) = file_list(i);
             CUR_JOB(1).submit    = 1;      
-            [single_IMG, errormsg_ind, CUR_JOB] = calculateMap(CUR_JOB);
+            [single_IMG, errormsg_ind, CUR_JOB, new_txtname(i).txtname] = calculateMap(CUR_JOB);
             
             if ~isempty(single_IMG) && ~isempty(errormsg)
                 % Map was made properly, so we update the batch data
@@ -42,30 +41,62 @@ if submit
     
     % The batch job has completed. Now we check for log saves  
     
+    if JOB_struct(1).save_text
+        % Combine txt logs
+        combined_txt_name = strrep(fullfile(JOB_struct(1).current_dir, JOB_struct(1).log_name), '.log', '_log.txt');
+        
+        if ispc
+            system_file = 'type';
+        end
+        
+        if isunix
+            system_file = 'cat';
+        end
+        
+
+        for i = 1:numel(file_list)
+            
+            system_file = [system_file ' '  new_txtname(i).txtname];
+        end
+        
+        system_file = [system_file ' > ' combined_txt_name];
+        
+        % Run system command
+        if system(system_file)
+           errormsg = 'Problem saving txt file';
+        end
+    end
+    
+    if JOB_struct(1).save_log
+        JOB_struct = CUR_JOB;
+        save(fullfile(JOB_struct(1).current_dir, JOB_struct(1).log_name), 'JOB_struct', '-mat');
+        log_name = fullfile(JOB_struct(1).current_dir, JOB_struct(1).log_name);
+    end
+    
     % Need to think about logging behavior
     
     %% Email the user that the map has ended.
     
-    % if ~isempty(email)
-%     % Email the person on completion
-%     % Define these variables appropriately:
-%     mail = 'immune.caltech@gmail.com'; %Your GMail email address
-%     password = 'antibody'; %Your GMail password
-%     % Then this code will set up the preferences properly:
-%     setpref('Internet','E_mail',mail);
-%     setpref('Internet','SMTP_Server','smtp.gmail.com');
-%     setpref('Internet','SMTP_Username',mail);
-%     setpref('Internet','SMTP_Password',password);
-%     props = java.lang.System.getProperties;
-%     props.setProperty('mail.smtp.auth','true');
-%     props.setProperty('mail.smtp.socketFactory.class', 'javax.net.ssl.SSLSocketFactory');
-%     props.setProperty('mail.smtp.socketFactory.port','465');
-%     
-%     hostname = char( getHostName( java.net.InetAddress.getLocalHost ) );
-%     
-%     sendmail(email,'MRI map processing completed',['Hello! Your Map Calc job on '...
-%         ,hostname,' is done! compution time was ',datestr(datenum(0,0,0,0,0,total_time),'HH:MM:SS')]);
-% end
+    if ~isempty(JOB_struct(1).email) && isempty(errormsg)
+    % Email the person on completion
+    % Define these variables appropriately:
+    mail = 'immune.caltech@gmail.com'; %Your GMail email address
+    password = 'antibody'; %Your GMail password
+    % Then this code will set up the preferences properly:
+    setpref('Internet','E_mail',mail);
+    setpref('Internet','SMTP_Server','smtp.gmail.com');
+    setpref('Internet','SMTP_Username',mail);
+    setpref('Internet','SMTP_Password',password);
+    props = java.lang.System.getProperties;
+    props.setProperty('mail.smtp.auth','true');
+    props.setProperty('mail.smtp.socketFactory.class', 'javax.net.ssl.SSLSocketFactory');
+    props.setProperty('mail.smtp.socketFactory.port','465');
+    
+    hostname = char( getHostName( java.net.InetAddress.getLocalHost ) );
+    
+    sendmail(email,'MRI map processing completed',['Hello! Your Map Calc job on '...
+        ,hostname,' is done! Logs of data and txt attached'], {log_name, combined_txt_name} );
+end
     
 else
     %Checking a particular Map
