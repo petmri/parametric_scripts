@@ -9,4 +9,4 @@ handles.file_list(cur_batch).output_basename = get(handles.output_basename, 'Str
 handles.file_list(cur_batch).rsquared = str2num(get(handles.rsquared_threshold, 'String'));
 handles.file_list(cur_batch).tr = str2num(get(handles.tr, 'String'));
 handles.file_list(cur_batch).curslice = str2num(get(handles.slice_num, 'String'));
-handles.file_list(handles.datasets).odd_echoes = get(handles.odd_echoes, 'Value');
+handles.file_list(cur_batch).odd_echoes = get(handles.odd_echoes, 'Value');

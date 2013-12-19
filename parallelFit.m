@@ -1,5 +1,5 @@
 % Parallel wrapper for the fitting algorithm
-function fit_output = parallelFit(parameter,fit_type,shaped_image,tr, submit)
+function fit_output = parallelFit(parameter,fit_type,shaped_image,tr, submit, fit_name)
 
 [dim_x, dim_y, dim_z, dim_te] = size(shaped_image);
 linear_shape = reshape(shaped_image,dim_x*dim_y*dim_z,dim_te);
@@ -11,8 +11,10 @@ fit_output = zeros([number_voxels 5],'double');
 % Break up parfor to allow for progress bar, and create progress bar
 parallel_size = 1000;
 
-if submit %Only show bar if doing the actual job
-    h = waitbar(0,'Starting...','Name','Calculating T2...',...
+submit = 1; % Update not fast enought. Need 
+
+if submit  %Only show bar if doing the actual job
+    h = waitbar(0,'Starting...','Name','Calculating fit...',...
         'CreateCancelBtn',...
         'setappdata(gcbf,''canceling'',1)');
     setappdata(h,'canceling',0)
@@ -27,7 +29,7 @@ for n=1:parallel_size:number_voxels
         si = linear_shape(m,:)';
         si = cast(si,'double');
         
-        fit_output(m,:) = fitParameter(parameter,fit_type,si,tr);
+        fit_output(m,:) = fitParameter(parameter,fit_type,si,tr, fit_name);
     end
     
     

@@ -1,5 +1,5 @@
 % Performs different types of fits on exponential decay (T1, T2, and T2*) data
-function fit_output = fitParameter(parameter,fit_type,si,tr)
+function fit_output = fitParameter(parameter,fit_type,si,tr, userfile)
 
 % Verify all numbers exists
 ok_ = isfinite(parameter) & isfinite(si);
@@ -112,23 +112,7 @@ if r_squared>=0.2
         rho_fit = cf_.p2;
         exponential_fit   = -1/cf_.p1;
         exponential_95_ci = -1./confidence_interval(:,1);
-    elseif(strcmp(fit_type,'ADC_linear_weighted'))
-        % Restrict fits for T2 from 0 to Inf, and coefficient ('rho') from
-        % 0 to inf
-        fo_ = fitoptions('method','LinearLeastSquares','Lower',[-Inf 0],'Upper',[0 Inf]);
-        ft_ = fittype('poly1');
-        set(fo_,'Weight',si);
-        ln_si = log(si);
-        
-        % Fit the model
-        [cf_, gof] = fit(parameter(ok_),ln_si(ok_),ft_,fo_);
-        
-        % Save Results
-        r_squared = gof.rsquare;
-        confidence_interval = confint(cf_,0.95);
-        rho_fit = cf_.p2;
-        exponential_fit   = -1/cf_.p1;
-        exponential_95_ci = -1./confidence_interval(:,1);
+   
     elseif(strcmp(fit_type,'t2_linear_weighted'))
         % Restrict fits for T2 from 1ms to 2500ms, and coefficient ('rho') from
         % 0 to inf
@@ -317,6 +301,25 @@ if r_squared>=0.2
         rho_fit = cf_.a*max(si);
         exponential_fit   = cf_.t1;
         exponential_95_ci = confidence_interval(:,2);
+        
+    elseif strcmp(fit_type, 'user_input')
+        [PATHSTR,NAME,~] = fileparts(userfile);
+        
+        %Add the usefile function to path
+        path(path, PATHSTR);
+        
+        userFN = str2func(NAME);
+        
+        [cf_, gof] = userFN(parameter(ok_), si(ok_), tr);
+        
+        % Save Results
+        r_squared = gof.rsquare;
+        confidence_interval = confint(cf_,0.95);
+        rho_fit = cf_.a;
+        exponential_fit   = cf_.b;
+        exponential_95_ci = confidence_interval(:,2);
+        
+        
     elseif(strcmp(fit_type,'none'))
         r_squared = 1;
         rho_fit = 1;

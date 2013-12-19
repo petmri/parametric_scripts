@@ -1,5 +1,5 @@
 
-function [single_IMG, errormsg, JOB_struct, new_txtname] = calculateMap(JOB_struct);
+function [single_IMG, errormsg, JOB_struct, new_txtname] = calculateMap(JOB_struct, dataset);
 
 % Initialize empty variables
 single_IMG = '';
@@ -14,7 +14,7 @@ end
 
 % Extract parameters
 
-number_cps     = JOB_struct(1).number_cpus;
+number_cpus    = JOB_struct(1).number_cpus;
 neuroecon      = JOB_struct(1).neuroecon;
 email          = JOB_struct(1).email;
 cur_dataset    = JOB_struct(1).file_list;
@@ -29,12 +29,21 @@ save_txt       = JOB_struct(1).save_txt;
 % Extract INPUTS
 
 file_list           = cur_dataset.file_list;
-parameter_list      = cur_dataset.parameters';
+parameter_list      = cur_dataset.parameters;
+parameter_list      = parameter_list(:);
 fit_type            = cur_dataset.fit_type;
 odd_echoes          = cur_dataset.odd_echoes;
 rsquared_threshold  = cur_dataset.rsquared;
 tr                  = cur_dataset.tr;
 data_order          = cur_dataset.data_order;
+output_basename     = cur_dataset.output_basename;
+
+% Add the location of the user input file if exists, else empty
+if strcmp(fit_type, 'user_input')
+    fit_file = cur_dataset.user_fittype_file;
+else
+    fit_file = '';
+end
 
 % Start logging txt if save_txt
 
@@ -43,8 +52,15 @@ if save_txt && submit
     % Read file and get header information
     [file_path, filename]  = fileparts(imagefile);
     
+    % Add a timestamp in case of overlap
+    
+    t = strrep(strrep(datestr(now), ' ', ''), ':', '_');
+    
     if exist(file_path)
-        txt_name = fullfile(file_path, strrep(log_name, '.log', '.txt'));
+      
+        txt_name = fullfile(file_path, [filename, t, '_log.txt']);
+
+
         diary(txt_name);
     else
         errormsg = warning('Path of files does not exist');
@@ -194,7 +210,7 @@ for n=1:number_of_fits
             errormsg = warning( 'Number of files not evenly divisible by number or parameters' );
             return;
         end
-
+        
         % Read all files as all are needed for fit
     else
         
@@ -210,6 +226,15 @@ for n=1:number_of_fits
             res = nii.hdr.dime.pixdim;
             res = res(2:4);
             image_3d = nii.img;
+            
+            % Resize to small for visualization
+            if ~submit
+                for j = 1:size(image_3d,3)
+                    image_3d_small(:,:,j) = imresize(image_3d(:,:,j), 0.4);
+                end
+                image_3d = image_3d_small;
+            end
+            
             [dim_x, dim_y, dim_z] = size(image_3d);
             dim_n = size(parameter_list,1);
             
@@ -246,6 +271,7 @@ for n=1:number_of_fits
         else
             % EDIT NEEDED.
             % Currently, no preview available for other types of fitting
+            return
         end
     end
     
@@ -266,9 +292,9 @@ for n=1:number_of_fits
         job = createMatlabPoolJob(sched, 'configuration', 'NeuroEcon.local','PathDependencies', {p});
         set(job, 'MaximumNumberOfWorkers', 20);
         set(job, 'MinimumNumberOfWorkers', 1);
-        createTask(job, @parallelFit, 1,{parameter_list,fit_type,shaped_image,tr, submit});
+        createTask(job, @parallelFit, 1,{parameter_list,fit_type,shaped_image,tr, submit, fit_file});
         
-        submit(job)
+        submit(job);
         waitForState(job)
         results = getAllOutputArguments(job);
         destroy(job);
@@ -276,7 +302,7 @@ for n=1:number_of_fits
         fit_output = cell2mat(results);
     else
         
-        fit_output = parallelFit(parameter_list,fit_type,shaped_image,tr, submit);
+        fit_output = parallelFit(parameter_list,fit_type,shaped_image,tr, submit, fit_file);
         
         
     end
@@ -342,7 +368,7 @@ for n=1:number_of_fits
     else
         % Process R2 map for quick visualization
         single_IMG = r_squared;
-       
+        
     end
     
 end
@@ -353,30 +379,46 @@ if ~neuroecon && exist('matlabpool') && submit
 end
 
 if submit
-total_time = sum(execution_time);
-disp(['All processing complete at ', datestr(now,'mmmm dd, yyyy HH:MM:SS')])
-disp(['Total execution time was: ',datestr(datenum(0,0,0,0,0,total_time),'HH:MM:SS')]);
-
-% The map was calculated correctly, so we note this in the data structure
-
- cur_dataset.to_do = 0;
- JOB_struct(1).file_list = cur_dataset;
+    total_time = sum(execution_time);
+    disp(['All processing complete at ', datestr(now,'mmmm dd, yyyy HH:MM:SS')])
+    disp(['Total execution time was: ',datestr(datenum(0,0,0,0,0,total_time),'HH:MM:SS')]);
+    
+    % The map was calculated correctly, so we note this in the data structure
+    
+    cur_dataset.to_do = 0;
+    JOB_struct(1).file_list = cur_dataset;
 end
+
 
 % Save text and data structure logs if desired.
 if separate_logs && submit
-    log_name = strrep(fullpathT2, '.nii', '.log');
-    new_txtname=strrep(log_name, '.log', '_log.txt');
+    log_name = strrep(fullpathT2, '.nii', ['_' num2str(dataset) '_' t '_log.mat']);
     
-    if save_log      
+    
+    if save_log
         save(log_name, 'JOB_struct', '-mat');
         disp(['Saved log at: ' log_name]);
     end
     
+    
+end
+
+if submit
+    
+    diary off
+  
     if save_txt
+        [~, fn] = fileparts(txt_name);
+        new_txtname=fullfile(current_dir, [fn '.txt']);
         
-        movefile(txt_name, new_txtname);
+        if ~separate_logs
+            copyfile(txt_name, new_txtname);
+            delete(txt_name);
+        else
+            copyfile(txt_name, new_txtname);
+        end
     else
+        
         delete(txt_name);
     end
 end
@@ -398,9 +440,9 @@ end
 %     props.setProperty('mail.smtp.auth','true');
 %     props.setProperty('mail.smtp.socketFactory.class', 'javax.net.ssl.SSLSocketFactory');
 %     props.setProperty('mail.smtp.socketFactory.port','465');
-%     
+%
 %     hostname = char( getHostName( java.net.InetAddress.getLocalHost ) );
-%     
+%
 %     sendmail(email,'MRI map processing completed',['Hello! Your Map Calc job on '...
 %         ,hostname,' is done! compution time was ',datestr(datenum(0,0,0,0,0,total_time),'HH:MM:SS')]);
 % end

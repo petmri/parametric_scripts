@@ -24,5 +24,6 @@ function JOB_struct = setup_job(handles)
  JOB_struct(1).current_dir = current_dir;
  JOB_struct(1).log_name = log_name;
  JOB_struct(1).save_txt = save_txt;
+
  
  
