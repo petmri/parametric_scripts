@@ -1,5 +1,5 @@
 % Parallel wrapper for the fitting algorithm
-function fit_output = parallelFit(parameter,fit_type,shaped_image,tr, submit, fit_name)
+function fit_output = parallelFit(parameter,fit_type,shaped_image,tr, submit, fit_name, ncoeffs, coeffs)
 
 [dim_x, dim_y, dim_z, dim_te] = size(shaped_image);
 linear_shape = reshape(shaped_image,dim_x*dim_y*dim_z,dim_te);
@@ -29,7 +29,7 @@ for n=1:parallel_size:number_voxels
         si = linear_shape(m,:)';
         si = cast(si,'double');
         
-        fit_output(m,:) = fitParameter(parameter,fit_type,si,tr, fit_name);
+        fit_output(m,:) = fitParameter(parameter,fit_type,si,tr, fit_name, ncoeffs, coeffs);
     end
     
     

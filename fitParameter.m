@@ -1,5 +1,5 @@
 % Performs different types of fits on exponential decay (T1, T2, and T2*) data
-function fit_output = fitParameter(parameter,fit_type,si,tr, userfile)
+function fit_output = fitParameter(parameter,fit_type,si,tr, userfile, ncoeffs, coeffs)
 
 % Verify all numbers exists
 ok_ = isfinite(parameter) & isfinite(si);
@@ -112,7 +112,7 @@ if r_squared>=0.2
         rho_fit = cf_.p2;
         exponential_fit   = -1/cf_.p1;
         exponential_95_ci = -1./confidence_interval(:,1);
-   
+        
     elseif(strcmp(fit_type,'t2_linear_weighted'))
         % Restrict fits for T2 from 1ms to 2500ms, and coefficient ('rho') from
         % 0 to inf
@@ -310,14 +310,16 @@ if r_squared>=0.2
         
         userFN = str2func(NAME);
         
-        [cf_, gof] = userFN(parameter(ok_), si(ok_), tr);
+        [cf_, gof, output] = userFN(parameter(ok_), si(ok_), tr);
         
         % Save Results
         r_squared = gof.rsquare;
         confidence_interval = confint(cf_,0.95);
-        rho_fit = cf_.a;
-        exponential_fit   = cf_.b;
+        %rho_fit = cf_.a;
+        %exponential_fit   = cf_.b;
         exponential_95_ci = confidence_interval(:,2);
+        
+        coeffvals = coeffvalues(cf_);
         
         
     elseif(strcmp(fit_type,'none'))
@@ -326,6 +328,7 @@ if r_squared>=0.2
         exponential_fit   = 1;
         exponential_95_ci = [1 1];
     end
+    
 else
     rho_fit = -2;
     exponential_fit = -2;
@@ -333,6 +336,8 @@ else
     exponential_95_ci(2) = -2;
 end
 
-
-
-fit_output = [exponential_fit rho_fit r_squared exponential_95_ci(1) exponential_95_ci(2)];
+if ~strcmp(fit_type, 'user_input')
+    fit_output = [exponential_fit rho_fit r_squared exponential_95_ci(1) exponential_95_ci(2)];
+else
+    fit_output = [coeffvals r_squared exponential_95_ci(1) exponential_95_ci(2)];
+end

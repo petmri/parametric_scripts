@@ -2,11 +2,13 @@
 % add output structure to the variables returned and extract the equation
 % to show on the GUI
 
-function [equation, fit_name, errormsg] = prepareFit(fit_file)
+function [equation, fit_name, errormsg, ncoeffs, coeffs] = prepareFit(fit_file)
 
 errormsg = '';
 equation = '';
 fit_name = '';
+ncoeffs = 0;
+coeffs   = '';
 
 %1. Check presence of fit_file
 
@@ -35,9 +37,23 @@ else
             bracket=strfind(tline, '(');
             equation = tline((bracket(1)+1):(comma(1)-1));
             
+            % Make fittype object
+            eval(tline);
+            % find number of coeff
+            ncoeffs = numcoeffs(ft);
+            coeffs  = coeffnames(ft);
+            
             if strfind(equation, 'tr')
                 tr = 1;
-                % Need to add tr as an input at file line
+                % Need to add tr as an input at file line 
+                % and remove it from coeffs list
+                ncoeffs = ncoeffs-1;
+                
+                for i = 1:numel(coeffs)
+                    if(strcmp(coeffs{i}, 'tr'))
+                        coeffs(i) = [];
+                    end
+                end
             end
             
         end

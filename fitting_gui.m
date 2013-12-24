@@ -22,7 +22,7 @@ function varargout = fitting_gui(varargin)
 
 % Edit the above text to modify the response to help fitting_gui
 
-% Last Modified by GUIDE v2.5 17-Dec-2013 20:46:46
+% Last Modified by GUIDE v2.5 23-Dec-2013 21:47:25
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -125,19 +125,7 @@ list = get(handles.batch_set,'String');
 % Add selected files to batchbox
 if strcmp(list,'No Datasets')
     
-    % Add a dataset
-    list = get(handles.batch_set,'String');
-    % Add selected files to batchbox
-    handles.datasets = handles.datasets +1;
-    
-    list = ['Dataset ' num2str(handles.datasets)];
-    
-    set(handles.dataset_num, 'String', num2str(1));
-    
-    
-    set(handles.batch_set,'String',list, 'Value',1);
-    set(handles.batch_total, 'String', num2str(handles.datasets), 'Value', 1);
-    handles.file_list(handles.datasets).file_list = {};
+handles = makeNewbatch(handles);
     guidata(hObject, handles);
 end
 
@@ -145,7 +133,7 @@ end
 batch_selected = get(handles.batch_set,'Value');
 
 [filename, pathname, filterindex] = uigetfile( ...
-    {  '*.nii','Nifti Files (*.nii)'; ...
+    {'*.dcm', '3D Dicom Files (*.dcm)';  '*.nii','Nifti Files (*.nii)'; ...
     '*2dseq','Bruker Files (2dseq)'; ...
     '*.hdr;*.img','Analyze Files (*.hdr, *.img)';...
     '*.*',  'All Files (*.*)'}, ...
@@ -171,12 +159,19 @@ else
     if ischar(fullpath)
         fullpath = {fullpath};
     end
+    if isempty(list)
+        list = {''};
+    end
     
     filename = filename';
     fullpath = fullpath';
     
+   
     % Add selected files to listbox
     if strcmp(list,'No Files')
+        list = filename;
+        handles.file_list(batch_selected).file_list = fullpath;
+    elseif isempty(list(1))
         list = filename;
         handles.file_list(batch_selected).file_list = fullpath;
     else
@@ -184,10 +179,15 @@ else
         handles.file_list(batch_selected).file_list = [handles.file_list(batch_selected).file_list; fullpath];
     end
     
-    % Read and autoset TE if present in description field
-    % Use last file on list by default
-    [nii.hdr,nii.filetype,nii.fileprefix,nii.machine] = load_nii_hdr(fullpath{end});
-    te = nii.hdr.hist.descrip;
+    [~, ~, ext] = fileparts(fullpath{end});
+    if strcmp(ext, '.nii')
+        % Read and autoset TE if present in description field
+        % Use last file on list by default
+        [nii.hdr,nii.filetype,nii.fileprefix,nii.machine] = load_nii_hdr(fullpath{end});
+        te = nii.hdr.hist.descrip;
+    else
+        te = '';
+    end
     
     
     if ~isempty(te)
@@ -540,7 +540,8 @@ elseif ~isempty(strfind(fit_type, 'user_input'));
         'Pick custom fit file');
     
     % Prep file for ROCKETship
-    [equation, fit_name, errormsg] = prepareFit(fullpath(pathname, filename));
+    [equation, fit_name, errormsg, ncoeffs, coeffs] = prepareFit(fullpath(pathname, filename));
+  
     handles = disp_error(errormsg, handles);
     
     set(handles.output_basename,'String',fit_name);
@@ -550,6 +551,8 @@ elseif ~isempty(strfind(fit_type, 'user_input'));
     end
     
     handles.file_list(batch_selected).user_fittype_file = fullpath(pathname, filename);
+    handles.file_list(batch_selected).ncoeffs           = ncoeffs;
+    handles.file_list(batch_selected).coeffs            = coeffs;
     
 else
     %User input edit as needed.
@@ -786,6 +789,7 @@ list = handles.file_list(cur_batch).file_list;
 %Remove the directory path to allow nice visualization
 list = visualize_list(list);
 
+handles.file_list(cur_batch)
 
 
 % Reset radiobuttons
@@ -801,8 +805,14 @@ handles = visualize_R2(handles, '');
 
 if ~isempty(list)
 % Set radiobuttons
+handles.file_list(cur_batch).fit_type
+disp('batch select')
+if ~isempty(handles.file_list(cur_batch).fit_type)
 eval(['set(handles.' handles.file_list(cur_batch).fit_type ', ''Value'', 1)']);
+end
+if ~isempty(handles.file_list(cur_batch).data_order)
 eval(['set(handles.' handles.file_list(cur_batch).data_order ', ''Value'', 1)']);
+end
 set(handles.output_basename,'String',handles.file_list(cur_batch).output_basename);
 set(handles.te_box, 'String', num2str(handles.file_list(cur_batch).parameters));
 set(handles.tr,'String',handles.file_list(cur_batch).tr);
@@ -869,32 +879,7 @@ function add_batch_Callback(hObject, eventdata, handles)
 % hObject    handle to add_batch (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-% Add a dataset
-list = get(handles.batch_set,'String');
-% Add selected files to batchbox
-if strcmp(list,'No Datasets')
-    handles.datasets = handles.datasets +1;
-    
-    list = ['Dataset ' num2str(handles.datasets)];
-    
-    set(handles.dataset_num, 'String', num2str(1));
-else
-    handles.datasets = handles.datasets +1;
-    list = [list;  ['Dataset ' num2str(handles.datasets)]];
-    
-end
-
-
-set(handles.batch_set,'String',list, 'Value',1);
-set(handles.batch_total, 'String', num2str(handles.datasets), 'Value', 1);
-
-cur_batch = handles.datasets;
-handles.file_list(cur_batch).output_basename = '';
-handles.file_list(cur_batch).tr = str2num(get(handles.tr, 'String'));
-handles.file_list(cur_batch).rsquared = str2num(get(handles.rsquared_threshold, 'String'));
-handles.file_list(cur_batch).curslice = str2num(get(handles.slice_num, 'String'));;
-handles.file_list(handles.datasets).file_list = {};
-handles.file_list(handles.datasets).odd_echoes = get(handles.odd_echoes, 'Value');
+handles = makeNewbatch(handles);
 
 
 guidata(hObject, handles);
@@ -922,9 +907,14 @@ if handles.datasets < 1
 else
     set(handles.dataset_num, 'String', 'Reselect Dataset');
 end
+
+index_selected
 set(handles.batch_set,'String',list, 'Value',1)
 
 set(handles.filename_box, 'String', '');
+
+JOB_struct = setup_job(handles);
+handles = update_handles(handles, JOB_struct);
 
 guidata(hObject, handles);
 
@@ -1286,7 +1276,7 @@ else
     end
 end
 
-set(handles.do_all, 'Enable', 'on');
+set(handles.redo_done, 'Enable', 'on');
 
 guidata(hObject, handles);
 
@@ -1493,3 +1483,26 @@ function redo_done_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of redo_done
+
+
+% --- Executes on selection change in file_format.
+function file_format_Callback(hObject, eventdata, handles)
+% hObject    handle to file_format (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns file_format contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from file_format
+
+
+% --- Executes during object creation, after setting all properties.
+function file_format_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to file_format (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: popupmenu controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end

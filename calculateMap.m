@@ -41,8 +41,12 @@ output_basename     = cur_dataset.output_basename;
 % Add the location of the user input file if exists, else empty
 if strcmp(fit_type, 'user_input')
     fit_file = cur_dataset.user_fittype_file;
+    ncoeffs  = cur_dataset.ncoeffs;
+    coeffs   = cur_dataset.coeffs;
 else
     fit_file = '';
+    ncoeffs  = 0;
+    coeffs   = '';
 end
 
 % Start logging txt if save_txt
@@ -148,6 +152,11 @@ if submit
 end
 disp('User selected r^2 threshold: ');
 disp(rsquared_threshold);
+
+if strcmp(fit_type, 'user_input')
+    disp('User selected fit file: ');
+    disp(fit_file);
+end
 
 
 % return;
@@ -292,7 +301,7 @@ for n=1:number_of_fits
         job = createMatlabPoolJob(sched, 'configuration', 'NeuroEcon.local','PathDependencies', {p});
         set(job, 'MaximumNumberOfWorkers', 20);
         set(job, 'MinimumNumberOfWorkers', 1);
-        createTask(job, @parallelFit, 1,{parameter_list,fit_type,shaped_image,tr, submit, fit_file});
+        createTask(job, @parallelFit, 1,{parameter_list,fit_type,shaped_image,tr, submit, fit_file, ncoeffs, coeffs});
         
         submit(job);
         waitForState(job)
@@ -302,7 +311,7 @@ for n=1:number_of_fits
         fit_output = cell2mat(results);
     else
         
-        fit_output = parallelFit(parameter_list,fit_type,shaped_image,tr, submit, fit_file);
+        fit_output = parallelFit(parameter_list,fit_type,shaped_image,tr, submit, fit_file, ncoeffs, coeffs);
         
         
     end
