@@ -195,7 +195,7 @@ for n=1:number_of_fits
         imagefile=cell2mat(file_list(n));
         
         % Read file and get header information
-        [file_path, filename]  = fileparts(imagefile);
+        [file_path, filename ext]  = fileparts(imagefile);
         % 		nii = load_nii(imagefile);
         nii = load_untouch_nii(imagefile);
         res = nii.hdr.dime.pixdim;
