@@ -1,5 +1,5 @@
 % Performs different types of fits on exponential decay (T1, T2, and T2*) data
-function fit_output = fitParameter(parameter,fit_type,si,tr, userfile, ncoeffs, coeffs)
+function fit_output = fitParameter(parameter,fit_type,si,tr, userfile, ncoeffs, coeffs, tr_present)
 
 % Verify all numbers exists
 ok_ = isfinite(parameter) & isfinite(si);
@@ -40,6 +40,9 @@ elseif(strcmp(fit_type,'t2_linear_fast') || strcmp(fit_type,'t1_fa_linear_fit'))
     r_squared = 2.0;
 elseif(strcmp(fit_type,'t1_ti_exponential_fit'))
     % Skip check as no linearization exists
+    r_squared = 2.0;
+elseif(strcmp(fit_type, 'user_input'))
+    % Skip check as user input
     r_squared = 2.0;
 else
     ln_si = log(si);
@@ -174,7 +177,7 @@ if r_squared>=0.2
         slope =sum(x.*y)/sum(x.^2);
         intercept = Ybar-slope.*Xbar; %#ok<NASGU>
         r_squared = (sum(x.*y)/sqrt(sum(x.^2)*sum(y.^2)))^2;
-        if ~isfinite(r_squared)
+        if ~isfinite(r_squared) || ~isreal(r_squared)
             r_squared = 0;
         end
         % Save Results
@@ -195,7 +198,7 @@ if r_squared>=0.2
         slope =sum(x.*y)/sum(x.^2);
         intercept = Ybar-slope.*Xbar; %#ok<NASGU>
         r_squared = (sum(x.*y)/sqrt(sum(x.^2)*sum(y.^2)))^2;
-        if ~isfinite(r_squared)
+        if ~isfinite(r_squared) || ~isreal(r_squared)
             r_squared = 0;
         end
         % Save Results
@@ -302,26 +305,31 @@ if r_squared>=0.2
         exponential_fit   = cf_.t1;
         exponential_95_ci = confidence_interval(:,2);
         
-    elseif strcmp(fit_type, 'user_input')
+    elseif(strcmp(fit_type, 'user_input'))
         [PATHSTR,NAME,~] = fileparts(userfile);
         
         %Add the usefile function to path
-        path(path, PATHSTR);
+%         path(path, PATHSTR)
+%         
+%         save('Moo.,mat', 'PATHSTR')
         
         userFN = str2func(NAME);
         
-        [cf_, gof, output] = userFN(parameter(ok_), si(ok_), tr);
+            % scale si, non-linear fit has trouble converging with big numbers
+        si = si./max(si);
+            
+        [cf_, gof, output] = userFN(parameter(ok_), si(ok_));
         
         % Save Results
         r_squared = gof.rsquare;
         confidence_interval = confint(cf_,0.95);
         %rho_fit = cf_.a;
         %exponential_fit   = cf_.b;
-        exponential_95_ci = confidence_interval(:,2);
-        
+        exponential_95_ci = confidence_interval;
+      
         coeffvals = coeffvalues(cf_);
-        
-        
+        coeffvals = coeffvals(:)';
+
     elseif(strcmp(fit_type,'none'))
         r_squared = 1;
         rho_fit = 1;
@@ -334,10 +342,12 @@ else
     exponential_fit = -2;
     exponential_95_ci(1) = -2;
     exponential_95_ci(2) = -2;
+ 
 end
 
 if ~strcmp(fit_type, 'user_input')
     fit_output = [exponential_fit rho_fit r_squared exponential_95_ci(1) exponential_95_ci(2)];
 else
-    fit_output = [coeffvals r_squared exponential_95_ci(1) exponential_95_ci(2)];
+    fit_output = [coeffvals r_squared exponential_95_ci(1,:) exponential_95_ci(2,:)];
+    
 end

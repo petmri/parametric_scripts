@@ -22,7 +22,7 @@ function varargout = fitting_gui(varargin)
 
 % Edit the above text to modify the response to help fitting_gui
 
-% Last Modified by GUIDE v2.5 23-Dec-2013 21:47:25
+% Last Modified by GUIDE v2.5 28-Dec-2013 10:15:54
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -69,7 +69,6 @@ set(handles.r2graph, 'XTick', []);
 set(handles.r2graph, 'YTick', []);
 
 set(handles.current_dir, 'String', pwd);
-
 
 % initialize file_list
 handles.file_list(1).file_list = {};
@@ -125,7 +124,7 @@ list = get(handles.batch_set,'String');
 % Add selected files to batchbox
 if strcmp(list,'No Datasets')
     
-handles = makeNewbatch(handles);
+    handles = makeNewbatch(handles);
     guidata(hObject, handles);
 end
 
@@ -133,12 +132,13 @@ end
 batch_selected = get(handles.batch_set,'Value');
 
 [filename, pathname, filterindex] = uigetfile( ...
-    {'*.dcm', '3D Dicom Files (*.dcm)';  '*.nii','Nifti Files (*.nii)'; ...
+    { '*.nii','Nifti Files (*.nii)'; ...
     '*2dseq','Bruker Files (2dseq)'; ...
     '*.hdr;*.img','Analyze Files (*.hdr, *.img)';...
     '*.*',  'All Files (*.*)'}, ...
     'Pick a file', ...
     'MultiSelect', 'on');
+%'*.dcm', '3D Dicom Files (*.dcm)'; 
 if isequal(filename,0)
     %disp('User selected Cancel')
 else
@@ -166,7 +166,7 @@ else
     filename = filename';
     fullpath = fullpath';
     
-   
+    
     % Add selected files to listbox
     if strcmp(list,'No Files')
         list = filename;
@@ -536,23 +536,55 @@ elseif ~isempty(strfind(fit_type, 't1'));
     end
 elseif ~isempty(strfind(fit_type, 'user_input'));
     [filename, pathname] = uigetfile( ...
-        {'*.m';'*.mdl';'*.mat';'*.*'}, ...
-        'Pick custom fit file');
+        {'*.m';'*.*'}, ...
+        'Pick custom fit file generated from cftool');
     
-    % Prep file for ROCKETship
-    [equation, fit_name, errormsg, ncoeffs, coeffs] = prepareFit(fullpath(pathname, filename));
-  
-    handles = disp_error(errormsg, handles);
-    
-    set(handles.output_basename,'String',fit_name);
-    set(handles.user_input_fn, 'String', equation);
-    if ~isempty(strfind(equation, 'tr'))
-        set(handles.tr,'Enable','on');
+    if ~filename
+        return
     end
     
-    handles.file_list(batch_selected).user_fittype_file = fullpath(pathname, filename);
-    handles.file_list(batch_selected).ncoeffs           = ncoeffs;
-    handles.file_list(batch_selected).coeffs            = coeffs;
+    % Prep file for ROCKETship
+    % Check if tr is in equation and if so, whether TR has been defined. If
+    % not, let user know
+    
+    [errormsg, tr_ready, equation, ncoeffs] = check_TRfit(handles, fullfile(pathname, filename));
+    
+   
+    if tr_ready
+        [equation, fit_name, errormsg, ncoeffs, coeffs, tr_present, fit_filename] = prepareFit(fullfile(pathname, filename), tr_ready);
+        handles = disp_error(errormsg, handles);
+        set(handles.output_basename,'String',fit_name);
+        
+        %Display info about the user defined function
+        
+        coeffstr = '';
+        
+        for i = 1:ncoeffs
+            coeffstr = [coeffstr ',' coeffs{i}];
+        end
+  
+        display{1} = ['Equation: ' equation];
+        display{2} = [num2str(ncoeffs) ' variables:'];
+        display{3} = coeffstr;
+       
+        set(handles.user_input_fn, 'String', display);
+        if tr_present
+            set(handles.tr,'Enable','on');
+        end
+      
+        handles.file_list(batch_selected).user_fittype_file = fit_filename;
+        handles.file_list(batch_selected).ncoeffs           = ncoeffs;
+        handles.file_list(batch_selected).coeffs            = coeffs;
+        handles.file_list(batch_selected).tr_present        = tr_present;
+    else
+        
+        display{1} = ['Equation: ' equation];
+        display{2} = [num2str(ncoeffs) ' variables:'];
+        set(handles.user_input_fn, 'String', display);
+        set(handles.tr,'Enable','on');
+        handles = disp_error(errormsg, handles);
+        
+    end
     
 else
     %User input edit as needed.
@@ -562,7 +594,14 @@ else
     
 end
 
-handles.file_list(batch_selected).tr = '';
+
+if ~isempty(strfind(fit_type, 'user_input'))
+    if tr_ready
+        handles.file_list(batch_selected).tr = tr_ready;
+    end
+else
+    handles.file_list(batch_selected).tr = '';
+end
 handles.file_list(batch_selected).fit_type = fit_type;
 handles.file_list(batch_selected).output_basename = get(handles.output_basename, 'String');
 
@@ -579,7 +618,7 @@ JOB_struct = setup_job(handles);
 
 
 if isempty(errormsg)
-    [single_IMG submit data_setnum] = calculateMap_batch(JOB_struct, submit, dataset_num);
+    [single_IMG submit data_setnum, errormsg] = calculateMap_batch(JOB_struct, submit, dataset_num);
     
     if ~isempty(errormsg)
         
@@ -640,22 +679,22 @@ handles = disp_error(errormsg, handles);
 % Update handles structure
 handles = update_parameters(handles, batch_selected);
 JOB_struct = setup_job(handles);
-if isempty(errormsg)
-    [single_IMG submit data_setnum errormsg] = calculateMap_batch(JOB_struct, submit, dataset_num);
-    
-    
-    if ~isempty(errormsg)
-        handles = disp_error(errormsg, handles);
-    elseif isempty(single_IMG)
-        errormsg = 'Empty image';
-        handles = disp_error(errormsg, handles);
-    else
-        %Display Image
-        
-        handles = visualize_R2(handles, single_IMG);
-        
-    end
-end
+% if isempty(errormsg)
+%     [single_IMG submit data_setnum errormsg] = calculateMap_batch(JOB_struct, submit, dataset_num);
+%
+%
+%     if ~isempty(errormsg)
+%         handles = disp_error(errormsg, handles);
+%     elseif isempty(single_IMG)
+%         errormsg = 'Empty image';
+%         handles = disp_error(errormsg, handles);
+%     else
+%         %Display Image
+%
+%         handles = visualize_R2(handles, single_IMG);
+%
+%     end
+% end
 % Update handles structure
 guidata(hObject, handles);
 
@@ -804,25 +843,25 @@ set(handles.rsquared_threshold,  'String' ,num2str(0.6));
 handles = visualize_R2(handles, '');
 
 if ~isempty(list)
-% Set radiobuttons
-handles.file_list(cur_batch).fit_type
-disp('batch select')
-if ~isempty(handles.file_list(cur_batch).fit_type)
-eval(['set(handles.' handles.file_list(cur_batch).fit_type ', ''Value'', 1)']);
-end
-if ~isempty(handles.file_list(cur_batch).data_order)
-eval(['set(handles.' handles.file_list(cur_batch).data_order ', ''Value'', 1)']);
-end
-set(handles.output_basename,'String',handles.file_list(cur_batch).output_basename);
-set(handles.te_box, 'String', num2str(handles.file_list(cur_batch).parameters));
-set(handles.tr,'String',handles.file_list(cur_batch).tr);
-set(handles.odd_echoes, 'Value', handles.file_list(cur_batch).odd_echoes);
-set(handles.rsquared_threshold,  'String' ,num2str(handles.file_list(cur_batch).rsquared));
+    % Set radiobuttons
+    handles.file_list(cur_batch).fit_type
+    disp('batch select')
+    if ~isempty(handles.file_list(cur_batch).fit_type)
+        eval(['set(handles.' handles.file_list(cur_batch).fit_type ', ''Value'', 1)']);
+    end
+    if ~isempty(handles.file_list(cur_batch).data_order)
+        eval(['set(handles.' handles.file_list(cur_batch).data_order ', ''Value'', 1)']);
+    end
+    set(handles.output_basename,'String',handles.file_list(cur_batch).output_basename);
+    set(handles.te_box, 'String', num2str(handles.file_list(cur_batch).parameters));
+    set(handles.tr,'String',handles.file_list(cur_batch).tr);
+    set(handles.odd_echoes, 'Value', handles.file_list(cur_batch).odd_echoes);
+    set(handles.rsquared_threshold,  'String' ,num2str(handles.file_list(cur_batch).rsquared));
 end
 
 set(handles.dataset_num, 'String', num2str(cur_batch));
 
-% Update R2 
+% Update R2
 submit = 0;
 dataset_num = cur_batch;
 
@@ -841,10 +880,10 @@ if isempty(errormsg)
         handles = disp_error(errormsg, handles);
         
         
-%     elseif isempty(single_IMG)
-%         errormsg = 'Empty image';
-%         
-%         handles = disp_error(errormsg, handles);
+        %     elseif isempty(single_IMG)
+        %         errormsg = 'Empty image';
+        %
+        %         handles = disp_error(errormsg, handles);
     else
         %Display Image
         
@@ -948,27 +987,27 @@ handles = disp_error(errormsg, handles);
 
 
 
-if isempty(errormsg)
-    % Update handles structure
-    handles = update_parameters(handles, batch_selected);
-    JOB_struct = setup_job(handles);
-    [single_IMG submit data_setnum errormsg] = calculateMap_batch(JOB_struct, submit, dataset_num);
-    
-    if ~isempty(errormsg)
-        
-        handles = disp_error(errormsg, handles);
-%     elseif isempty(single_IMG)
-%         errormsg = 'Empty image';
-%         
+% if isempty(errormsg)
+%     % Update handles structure
+%     handles = update_parameters(handles, batch_selected);
+%     JOB_struct = setup_job(handles);
+%     [single_IMG submit data_setnum errormsg] = calculateMap_batch(JOB_struct, submit, dataset_num);
+%
+%     if ~isempty(errormsg)
+%
 %         handles = disp_error(errormsg, handles);
-    else
-        %Display Image
-        
-        handles = visualize_R2(handles, single_IMG);
-        
-        
-    end
-end
+% %     elseif isempty(single_IMG)
+% %         errormsg = 'Empty image';
+% %
+% %         handles = disp_error(errormsg, handles);
+%     else
+%         %Display Image
+%
+%         handles = visualize_R2(handles, single_IMG);
+%
+%
+%     end
+% end
 % Update handles structure
 guidata(hObject, handles);
 
@@ -1343,6 +1382,8 @@ function fittype_ButtonDownFcn(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+disp('ButtonDow')
+
 
 % --- Executes on key press with focus on remove_files and none of its controls.
 function remove_files_KeyPressFcn(hObject, eventdata, handles)
@@ -1402,15 +1443,6 @@ else
 end
 
 guidata(hObject, handles);
-
-
-
-
-
-
-
-
-
 
 
 % --- Executes on button press in file_down.
@@ -1506,3 +1538,11 @@ function file_format_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+% --- If Enable == 'on', executes on mouse press in 5 pixel border.
+% --- Otherwise, executes on mouse press in 5 pixel border or over user_input.
+function user_input_ButtonDownFcn(hObject, eventdata, handles)
+% hObject    handle to user_input (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)

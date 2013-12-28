@@ -43,9 +43,14 @@ elseif numel(str2num(get(handles.te_box, 'String'))) == 1;
 elseif isempty(get(handles.tr, 'String'))
     warning('TR not defined')
     errormsg = 'TR not defined';
-elseif numel(handles.file_list(batch_selected).file_list) > 1 && ~strcmp(get(get(handles.data_order,'SelectedObject'),'Tag'), 'xyzfile')
+elseif numel(handles.file_list(batch_selected).file_list) > 1 & ~strcmp(get(get(handles.data_order,'SelectedObject'),'Tag'), 'xyzfile')
      warning('Multiple files present')
     errormsg = 'Multiple files present';
+elseif strfind(get(get(handles.fittype,'SelectedObject'),'Tag'), 'user_input') & handles.file_list(batch_selected).tr
+    if(isempty(num2str(str2num(get(handles.tr, 'String')))))
+    warning('Need to input TR')
+    errormsg = 'Need to input TR';
+    end
 else
     %Rough check ok
 end

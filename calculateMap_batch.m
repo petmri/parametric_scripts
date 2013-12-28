@@ -151,9 +151,15 @@ else
     
     CUR_JOB    = JOB_struct;
     file_list  = JOB_struct(1).file_list;
-    CUR_JOB(1).file_list = file_list(dataset_num);
-    CUR_JOB(1).submit    = 0;
-    [single_IMG, errormsg] = calculateMap(CUR_JOB);
+
+    if strcmp(file_list(dataset_num).fit_type, 'user_input') || strcmp(file_list(dataset_num).fit_type, 't1_ti_exponential_fit')
+        errormsg = 'Non-linear fit; no preview';
+        disp(errormsg)
+    else
+        CUR_JOB(1).file_list = file_list(dataset_num);
+        CUR_JOB(1).submit    = 0;
+        [single_IMG, errormsg] = calculateMap(CUR_JOB);
+    end
     
 end
 
