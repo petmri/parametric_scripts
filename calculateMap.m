@@ -472,7 +472,7 @@ for n=1:number_of_fits
         disp('Map saved to: ');
         if iscell(fillpathT2)
             for i = 1:numel(fullpathT2)
-                disp(fillpathT2{i});
+                disp(fullpathT2{i});
             end
         else
             disp(fullpathT2);
