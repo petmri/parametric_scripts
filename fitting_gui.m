@@ -165,23 +165,23 @@ else
     
     filename = filename';
     fullpath = fullpath';
-    
+  
     
     % Add selected files to listbox
     if strcmp(list,'No Files')
         list = filename;
         handles.file_list(batch_selected).file_list = fullpath;
-    elseif isempty(list(1))
+    elseif isempty(list(1)) || isempty(list{1}) 
         list = filename;
         handles.file_list(batch_selected).file_list = fullpath;
     else
-        if isempty(list(1))
-            list = filename;
-        else
-            list = [list;  filename];
-        end
+
+           list = [list;  filename];
+ 
         handles.file_list(batch_selected).file_list = [handles.file_list(batch_selected).file_list; fullpath];
     end
+    
+   
     
     [~, ~, ext] = fileparts(fullpath{end});
     if strcmp(ext, '.nii')
@@ -832,7 +832,7 @@ list = handles.file_list(cur_batch).file_list;
 %Remove the directory path to allow nice visualization
 list = visualize_list(list);
 
-handles.file_list(cur_batch)
+%handles.file_list(cur_batch)
 
 
 % Reset radiobuttons
