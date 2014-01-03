@@ -14,12 +14,13 @@ if strcmp(list,'No Datasets')
 else
     handles.datasets = handles.datasets +1;
     
-    if handles.datasets) >9
+    if handles.datasets >9
         list = [list;  ['Dataset ' num2str(handles.datasets)]];
     else
         list = [list;  ['Dataset  ' num2str(handles.datasets)]];
         
     end
+end
 
 set(handles.batch_set,'String',list, 'Value',1);
 set(handles.batch_total, 'String', num2str(handles.datasets), 'Value', 1);

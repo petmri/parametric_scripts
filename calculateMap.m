@@ -470,7 +470,7 @@ for n=1:number_of_fits
         disp(['Map completed at ', datestr(now,'mmmm dd, yyyy HH:MM:SS')])
         disp(['Execution time was: ',datestr(datenum(0,0,0,0,0,execution_time(n)),'HH:MM:SS')]);
         disp('Map saved to: ');
-        if iscell(fillpathT2)
+        if iscell(fullpathT2)
             for i = 1:numel(fullpathT2)
                 disp(fullpathT2{i});
             end

@@ -28,7 +28,12 @@ handles.datasets = numel(file_list);
 if numel(file_list) > 0
     list = '';
     for i = 1:numel(file_list)
+        
+        if i > 9 
         list = [list;  ['Dataset ' num2str(i)]];
+        else
+            list = [list;  ['Dataset  ' num2str(i)]]; 
+        end
         
         if numel(file_list) > 1
             curfilelist = file_list(1);

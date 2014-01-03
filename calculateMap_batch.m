@@ -35,7 +35,7 @@ if submit
             
             [single_IMG, errormsg_ind, CUR_JOB, new_txtname(done+1).txtname] = calculateMap(CUR_JOB, i);
              
-            if single_IMG && isempty(errormsg_ind)
+            if single_IMG & isempty(errormsg_ind)
                 % Map was made properly, so we update the batch data
                 % structure log to reflect this
                 cur_file_list = CUR_JOB(1).file_list;

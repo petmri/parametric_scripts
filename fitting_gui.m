@@ -229,12 +229,14 @@ index_selected = get(handles.filename_box,'Value');
 batch_selected = get(handles.batch_set,'Value');
 
 list = get(handles.filename_box,'String');
+if ~isempty(list)
 curfile_list = handles.file_list(batch_selected).file_list;
 list(index_selected) = [];
 curfile_list(index_selected) = [];
 
 handles.file_list(batch_selected).file_list = curfile_list;
 set(handles.filename_box,'String',list, 'Value',1)
+end
 guidata(hObject, handles);
 
 % --- Executes on selection change in filename_box.
@@ -938,6 +940,7 @@ function remove_batch_Callback(hObject, eventdata, handles)
 index_selected = get(handles.batch_set,'Value');
 list = get(handles.batch_set,'String');
 
+if ~isempty(list)
 list(index_selected,:) = [];
 handles.file_list(index_selected) = [];
 handles.datasets = handles.datasets - 1;
@@ -958,6 +961,7 @@ set(handles.filename_box, 'String', '');
 
 JOB_struct = setup_job(handles);
 handles = update_handles(handles, JOB_struct);
+end
 
 guidata(hObject, handles);
 
