@@ -10,7 +10,7 @@ if strcmp(list,'No Datasets')
     
     list = ['Dataset  ' num2str(handles.datasets)];
     
-    set(handles.dataset_num, 'String', num2str(1));
+    set(handles.selected_dataset, 'String', num2str(1));
 else
     handles.datasets = handles.datasets +1;
     
@@ -22,15 +22,22 @@ else
     end
 end
 
-set(handles.batch_set,'String',list, 'Value',1);
+%Global Values
+set(handles.batch_set,'String',list, 'Value',handles.datasets);
 set(handles.batch_total, 'String', num2str(handles.datasets), 'Value', 1);
+
+%Batch Specific Values
 cur_batch = handles.datasets;
-handles.file_list(cur_batch).output_basename = '';
-handles.file_list(cur_batch).tr = str2num(get(handles.tr, 'String'));
-handles.file_list(cur_batch).rsquared = str2num(get(handles.rsquared_threshold, 'String'));
-handles.file_list(cur_batch).curslice = str2num(get(handles.slice_num, 'String'));
-handles.file_list(handles.datasets).file_list = {};
-handles.file_list(handles.datasets).odd_echoes = get(handles.odd_echoes, 'Value');
-handles.file_list(cur_batch).fit_type = '';
-handles.file_list(cur_batch).data_order= '';
+handles.batch_data(cur_batch).curslice = str2num(get(handles.slice_num, 'String'));
+handles.batch_data(cur_batch).data_order= '';
+handles.batch_data(cur_batch).file_list = {};
+handles.batch_data(cur_batch).fit_type = '';
+handles.batch_data(cur_batch).odd_echoes = get(handles.odd_echoes, 'Value');
+handles.batch_data(cur_batch).output_basename = '';
+handles.batch_data(cur_batch).parameter  = get(handles.te_box, 'String');
+handles.batch_data(cur_batch).rsquared = str2num(get(handles.rsquared_threshold, 'String'));
+handles.batch_data(cur_batch).tr = str2num(get(handles.tr, 'String'));
+handles.batch_data(cur_batch).preview_image = [];
+
+handles = load_batch(handles);
 

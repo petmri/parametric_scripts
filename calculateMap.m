@@ -17,7 +17,7 @@ end
 number_cpus    = JOB_struct(1).number_cpus;
 neuroecon      = JOB_struct(1).neuroecon;
 email          = JOB_struct(1).email;
-cur_dataset    = JOB_struct(1).file_list;
+cur_dataset    = JOB_struct(1).batch_data;
 save_log       = JOB_struct(1).save_log;
 email_log      = JOB_struct(1).email_log;
 separate_logs  = JOB_struct(1).separate_logs;
@@ -502,7 +502,7 @@ if submit
     % The map was calculated correctly, so we note this in the data structure
     
     cur_dataset.to_do = 0;
-    JOB_struct(1).file_list = cur_dataset;
+    JOB_struct(1).batch_data = cur_dataset;
 end
 
 

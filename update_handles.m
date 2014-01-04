@@ -1,9 +1,9 @@
 % Read JOB_struct to repopulate GUI
 
-function handles = update_handles(handles, JOB_struct);
+function handles = update_handles(handles, JOB_struct)
 
 email       = JOB_struct(1).email;
-file_list   = JOB_struct(1).file_list;
+batch_data   = JOB_struct(1).batch_data;
 save_log    = JOB_struct(1).save_log;
 email_log   = JOB_struct(1).email_log;
 separate_logs=JOB_struct(1).separate_logs;
@@ -13,7 +13,7 @@ save_txt    = JOB_struct(1).save_txt;
 
 %Set handles to reflect the JOB_struct
 
-handles.file_list = file_list;
+handles.batch_data = batch_data;
 set(handles.email_box, 'String', email);
 set(handles.save_log, 'Value', save_log);
 set(handles.email_log,'Value', email_log);
@@ -23,11 +23,11 @@ set(handles.log_name, 'String', log_name);
 set(handles.current_dir, 'String', current_dir);
 
 %Update Dataset list
-handles.datasets = numel(file_list);
+handles.datasets = numel(batch_data);
 
-if numel(file_list) > 0
+if numel(batch_data) > 0
     list = '';
-    for i = 1:numel(file_list)
+    for i = 1:numel(batch_data)
         
         if i > 9 
         list = [list;  ['Dataset ' num2str(i)]];
@@ -35,10 +35,10 @@ if numel(file_list) > 0
             list = [list;  ['Dataset  ' num2str(i)]]; 
         end
         
-        if numel(file_list) > 1
-            curfilelist = file_list(1);
+        if numel(batch_data) > 1
+            curfilelist = batch_data(1);
         else
-            curfilelist = file_list;
+            curfilelist = batch_data;
         end
     end
     
@@ -46,17 +46,17 @@ if numel(file_list) > 0
     set(handles.filename_box, 'String', curfilelist.file_list);
     set(handles.batch_total, 'String', num2str(handles.datasets), 'Value', 1);
     
-    set(get(handles.fittype,'SelectedObject'),'Value', 0);
+    set(get(handles.fit_type,'SelectedObject'),'Value', 0);
     set(get(handles.data_order, 'SelectedObject'), 'Value', 0);
 
-    if ~isempty(curfilelist.fittype)
-    eval(['set(handles.' curfilelist.fittype ', ''Value'', 1)']);
+    if ~isempty(curfilelist.fit_type)
+    eval(['set(handles.' curfilelist.fit_type ', ''Value'', 1)']);
     end
     if ~isempty(curfilelist.data_order)
     eval(['set(handles.' curfilelist.data_order ', ''Value'', 1)']);
     end
     %set(handles.data_order, 'SelectedObject', curfilelist.data_order);
-    %set(handles.fittype, 'SelectedObject', curfilelist.fittype);
+    %set(handles.fit_type, 'SelectedObject', curfilelist.fit_type);
     set(handles.te_box, 'String', curfilelist.parameter);
     set(handles.output_basename, 'String', curfilelist.output_basename);
     set(handles.rsquared_threshold, 'String', curfilelist.rsquared);
@@ -68,11 +68,11 @@ else
     set(handles.filename_box, 'String', '', 'Value', 0);
     set(handles.batch_total, 'String', num2str(handles.datasets), 'Value', 1);
     
-    set(get(handles.fittype,'SelectedObject'),'Value', 0);
+    set(get(handles.fit_type,'SelectedObject'),'Value', 0);
     set(get(handles.data_order, 'SelectedObject'), 'Value', 0);
     
     %set(handles.data_order, 'SelectedObject', curfilelist.data_order);
-    %set(handles.fittype, 'SelectedObject', curfilelist.fittype);
+    %set(handles.fit_type, 'SelectedObject', curfilelist.fit_type);
     set(handles.te_box, 'String', '');
     set(handles.output_basename, 'String', '');
     set(handles.rsquared_threshold, 'String', '');

@@ -8,7 +8,7 @@ errors   = 0;
 
 if submit
     % Lodging a batch job
-    file_list  = JOB_struct(1).file_list;
+    batch_data  = JOB_struct(1).batch_data;
     current_dir= JOB_struct(1).current_dir;
     log_name   = JOB_struct(1).log_name;
     
@@ -16,19 +16,19 @@ if submit
     done = 0;
     new_txtname = '';
     
-    for i = 1:numel(file_list)
+    for i = 1:numel(batch_data)
         % Check if the relevant dataset is to be made
         
-        to_do = file_list(i).to_do;
+        to_do = batch_data(i).to_do;
         
         if to_do
             CUR_JOB                 = JOB_struct;
-            CUR_JOB(1).file_list    = {};
+            CUR_JOB(1).batch_data    = {};
             
-            if numel(file_list) >1
-                CUR_JOB(1).file_list = file_list(i);
+            if numel(batch_data) >1
+                CUR_JOB(1).batch_data = batch_data(i);
             else
-                CUR_JOB(1).file_list = file_list;
+                CUR_JOB(1).batch_data = batch_data;
             end
             
             CUR_JOB(1).submit       = 1;
@@ -38,10 +38,10 @@ if submit
             if single_IMG & isempty(errormsg_ind)
                 % Map was made properly, so we update the batch data
                 % structure log to reflect this
-                cur_file_list = CUR_JOB(1).file_list;
-                file_list(i) = cur_file_list;
+                cur_batch_data = CUR_JOB(1).batch_data;
+                batch_data(i) = cur_batch_data;
                 
-                JOB_struct(1).file_list = file_list;
+                JOB_struct(1).batch_data = batch_data;
                 save(fullfile(JOB_struct(1).current_dir, strrep(JOB_struct(1).log_name, '.log', '_log.mat')), 'JOB_struct', '-mat');
                 done = done +1;
                 %save(fullfile(current_dir, log_name), 'JOB_struct', '-mat');
@@ -150,13 +150,13 @@ else
     %Checking a particular Map
     
     CUR_JOB    = JOB_struct;
-    file_list  = JOB_struct(1).file_list;
+    batch_data  = JOB_struct(1).batch_data;
 
-    if strcmp(file_list(dataset_num).fit_type, 'user_input') || strcmp(file_list(dataset_num).fit_type, 't1_ti_exponential_fit')
+    if strcmp(batch_data(dataset_num).fit_type, 'user_input') || strcmp(batch_data(dataset_num).fit_type, 't1_ti_exponential_fit')
         errormsg = 'Non-linear fit; no preview';
         disp(errormsg)
     else
-        CUR_JOB(1).file_list = file_list(dataset_num);
+        CUR_JOB(1).batch_data = batch_data(dataset_num);
         CUR_JOB(1).submit    = 0;
         [single_IMG, errormsg] = calculateMap(CUR_JOB);
     end
