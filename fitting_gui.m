@@ -672,6 +672,8 @@ handles = update_parameters(handles, batch_selected);
 [errormsg] = quick_check(handles);
 handles = disp_error(errormsg, handles);
 
+handles = visualize_R2(handles);
+
 % Update handles structure
 guidata(hObject, handles);
 
@@ -880,6 +882,8 @@ handles = update_parameters(handles, batch_selected);
 
 [errormsg] = quick_check(handles);
 handles = disp_error(errormsg, handles);
+
+handles = visualize_R2(handles);
 
 guidata(hObject, handles);
 

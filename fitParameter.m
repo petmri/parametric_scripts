@@ -1,5 +1,5 @@
 % Performs different types of fits on exponential decay (T1, T2, and T2*) data
-function fit_output = fitParameter(parameter,fit_type,si,tr, userfile, ncoeffs, coeffs, tr_present)
+function fit_output = fitParameter(parameter,fit_type,si,tr, userfile, ncoeffs, coeffs, tr_present,rsquared_threshold)
 
 % Verify all numbers exists
 ok_ = isfinite(parameter) & isfinite(si);
@@ -59,7 +59,7 @@ else
 end
 
 % Continue if fit is rational
-if r_squared>=0.2
+if r_squared>=rsquared_threshold
     if(strcmp(fit_type,'t2_exponential'))
         % Restrict fits for T2 from 1ms to 2500ms, and coefficient ('rho') from
         % 0 to inf

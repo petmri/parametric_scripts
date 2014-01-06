@@ -52,21 +52,16 @@ else
 end
 
 % Start logging txt if save_txt
-
 if save_txt && submit
     imagefile=cell2mat(file_list(1));
     % Read file and get header information
     [file_path, filename]  = fileparts(imagefile);
     
     % Add a timestamp in case of overlap
-    
     t = strrep(strrep(datestr(now), ' ', ''), ':', '_');
     
     if exist(file_path)
-        
         txt_name = fullfile(file_path, [filename, t, '_log.txt']);
-        
-        
         diary(txt_name);
     else
         errormsg = warning('Path of files does not exist');
@@ -130,7 +125,10 @@ if submit
     % fit_type = 'none';
     disp(['Starting execution at ', datestr(now,'mmmm dd, yyyy HH:MM:SS')])
     disp('User selected files: ');
-    disp(file_list);
+    [nrows,ncols]= size(file_list);
+    for row=1:nrows
+        disp(file_list{row,:})
+    end
     disp('User selected TE/TR/FA/TI: ');
     disp(parameter_list);
     disp('User selected fit: ');
@@ -178,18 +176,18 @@ else
 end
 
 % Create parallel processing pool
-if ~neuroecon && exist('matlabpool') && submit
+if ~neuroecon && exist('matlabpool')
     s = matlabpool('size');
-    if s
-        matlabpool close
+    if s~=number_cpus
+        if s>0
+            matlabpool close
+        end
+        matlabpool('local', number_cpus); % Check
     end
-    matlabpool('local', number_cpus); % Check
     
-    if strcmp(fit_type, 'user_input')
-
+    if strcmp(fit_type, 'user_input') && submit
        matlabpool('ADDATTACHEDFILES', {fit_file});
-    end
-        
+    end    
 end
 
 execution_time = zeros(size(file_list,1),1);
@@ -230,8 +228,6 @@ for n=1:number_of_fits
         
         % Read all files as all are needed for fit
     else
-        
-        
         % For each file in list load and add to larger matrix
         for m=1:dim_n
             imagefile=cell2mat(file_list(m+(n-1)*dim_n));
@@ -278,7 +274,6 @@ for n=1:number_of_fits
     
     % Change fittype to linear if needed for visualization
     if ~submit
-        
         if ~isempty(strfind(fit_type,'t2'))
             fit_type = 't2_linear_fast';
         elseif ~isempty(strfind(fit_type,'t1_fa'))
@@ -291,9 +286,6 @@ for n=1:number_of_fits
            
         end
     end
-    
-    
-    
     
     % Run Fitting Algorithms
     if(neuroecon)
@@ -309,7 +301,7 @@ for n=1:number_of_fits
         job = createMatlabPoolJob(sched, 'configuration', 'NeuroEcon.local','PathDependencies', {p});
         set(job, 'MaximumNumberOfWorkers', 20);
         set(job, 'MinimumNumberOfWorkers', 1);
-        createTask(job, @parallelFit, 1,{parameter_list,fit_type,shaped_image,tr, submit, fit_file, ncoeffs, coeffs, tr_present});
+        createTask(job, @parallelFit, 1,{parameter_list,fit_type,shaped_image,tr, submit, fit_file, ncoeffs, coeffs, tr_present,rsquared_threshold});
         
         submit(job);
         waitForState(job)
@@ -318,11 +310,9 @@ for n=1:number_of_fits
         
         fit_output = cell2mat(results);
     else
-        
-        
-        fit_output = parallelFit(parameter_list,fit_type,shaped_image,tr, submit, fit_file, ncoeffs, coeffs, tr_present);
-        
-        
+
+        fit_output = parallelFit(parameter_list,fit_type,shaped_image,tr, submit, fit_file, ncoeffs, coeffs, tr_present,rsquared_threshold);
+
     end
     
     if strfind(fit_type, 'user_input')
@@ -356,13 +346,11 @@ for n=1:number_of_fits
             
             eval([coeffs{i} '_cihigh(indbad) = -1;']);
             eval([coeffs{i} '_cihigh = reshape(' coeffs{i} '_cihigh, [dim_x, dim_y, dim_z]);']);
-            
         end
        
         r_squared				= reshape(r_squared, [dim_x, dim_y, dim_z]);
         
     else
-        
         % Collect and reshape outputs
         exponential_fit			 = fit_output(:,1);
         rho_fit					 = fit_output(:,2);
@@ -371,7 +359,6 @@ for n=1:number_of_fits
         confidence_interval_high = fit_output(:,5);
         
         % Throw out bad results
-        
         indr = find(r_squared < rsquared_threshold);
         inde = find(exponential_fit ~=-2);
         m    =intersect(indr,inde);
@@ -406,7 +393,7 @@ for n=1:number_of_fits
         %
         %         end
         if strfind(fit_type, 'user_input')
-            % Create out put names
+            % Create output names
             
             for i = 1:ncoeffs
                 fullpathT2{i} = fullfile(file_path, [output_basename, '_', coeffs{i},'_', filename ...
@@ -436,10 +423,8 @@ for n=1:number_of_fits
             
             Rsquareddirnii   = make_nii(r_squared, res, [1 1 1], [], 'R Squared of fit');
             save_nii(Rsquareddirnii, fullpathRsquared);
-            
            
         else
-            
             % Create output names
             fullpathT2 = fullfile(file_path, [output_basename, '_', fit_type,'_', filename ...
                 ,'.nii']);
@@ -462,7 +447,6 @@ for n=1:number_of_fits
                 save_nii(CILowdirnii, fullpathCILow);
                 save_nii(CIHighdirnii, fullpathCIHigh);
             end
-            
         end
         
         execution_time(n) = toc;
@@ -484,15 +468,13 @@ for n=1:number_of_fits
     else
         % Process R2 map for quick visualization
         single_IMG = r_squared;
-        
     end
-    
 end
 
 % Close parallel processing pool
-if ~neuroecon && exist('matlabpool') && submit
-    matlabpool close;
-end
+% if ~neuroecon && exist('matlabpool') && submit
+%     matlabpool close;
+% end
 
 if submit
     total_time = sum(execution_time);
@@ -500,7 +482,6 @@ if submit
     disp(['Total execution time was: ',datestr(datenum(0,0,0,0,0,total_time),'HH:MM:SS')]);
     
     % The map was calculated correctly, so we note this in the data structure
-    
     cur_dataset.to_do = 0;
     JOB_struct(1).batch_data = cur_dataset;
 end
@@ -510,31 +491,29 @@ end
 if separate_logs && submit
     log_name = strrep(fullpathT2, '.nii', ['_' num2str(dataset) '_' t '_log.mat']);
     
-    
     if save_log
         save(log_name, 'JOB_struct', '-mat');
         disp(['Saved log at: ' log_name]);
     end
-    
-    
 end
 
 if submit
-    
     diary off
     
     if save_txt
         [~, fn] = fileparts(txt_name);
         new_txtname=fullfile(current_dir, [fn '.txt']);
         
-        if ~separate_logs
-            copyfile(txt_name, new_txtname);
-            delete(txt_name);
-        else
-            copyfile(txt_name, new_txtname);
+        % Only copy if it is to a different directory
+        if ~strcmp(txt_name,new_txtname)
+            if ~separate_logs
+                copyfile(txt_name, new_txtname);
+                delete(txt_name);
+            else
+                copyfile(txt_name, new_txtname);
+            end
         end
     else
-        
         delete(txt_name);
     end
 end
