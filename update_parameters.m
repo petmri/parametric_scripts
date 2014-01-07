@@ -7,7 +7,7 @@ handles.batch_data(cur_batch).data_order = get(get(handles.data_order,'SelectedO
 handles.batch_data(cur_batch).fit_type    = get(get(handles.fit_type,'SelectedObject'),'Tag');
 handles.batch_data(cur_batch).odd_echoes = get(handles.odd_echoes, 'Value');
 handles.batch_data(cur_batch).output_basename = get(handles.output_basename, 'String');
-handles.batch_data(cur_batch).parameter  = get(handles.te_box, 'String');
+handles.batch_data(cur_batch).parameters  = str2num(get(handles.te_box, 'String'));
 handles.batch_data(cur_batch).rsquared = str2num(get(handles.rsquared_threshold, 'String'));
 handles.batch_data(cur_batch).tr = str2num(get(handles.tr, 'String'));
 

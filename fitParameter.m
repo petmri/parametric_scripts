@@ -315,7 +315,7 @@ if r_squared>=rsquared_threshold
         
         userFN = str2func(NAME);
         
-            % scale si, non-linear fit has trouble converging with big numbers
+        % scale si, non-linear fit has trouble converging with big numbers
         si = si./max(si);
             
         [cf_, gof, output] = userFN(parameter(ok_), si(ok_));

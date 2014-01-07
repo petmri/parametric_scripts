@@ -125,7 +125,6 @@ guidata(hObject, handles);
 list = get(handles.batch_set,'String');
 % Add selected files to batchbox
 if strcmp(list,'No Datasets')
-    
     handles = makeNewbatch(handles);
     guidata(hObject, handles);
 end
@@ -143,77 +142,76 @@ batch_selected = get(handles.batch_set,'Value');
 %'*.dcm', '3D Dicom Files (*.dcm)'; 
 if isequal(filename,0)
     %disp('User selected Cancel')
-else
-    %disp(['User selected ', fullfile(pathname, filename)])
-    list = get(handles.filename_box,'String');
-    
-    % Combine path and filename together
-    fullpath = strcat(pathname,filename);
-    
-    % Stupid matlab uses a different datastructure if only one file
-    % is selected, handle special case
-    if ischar(list)
-        list = {list};
-    end
-    if ischar(filename)
-        filename = {filename};
-    end
-    if ischar(fullpath)
-        fullpath = {fullpath};
-    end
-    if isempty(list)
-        list = {''};
-    end
-    
-    filename = filename';
-    fullpath = fullpath';
-  
-    
-    % Add selected files to listbox
-    if strcmp(list,'No Files')
-        list = filename;
-        handles.batch_data(batch_selected).file_list = fullpath;
-    elseif isempty(list(1)) || isempty(list{1}) 
-        list = filename;
-        handles.batch_data(batch_selected).file_list = fullpath;
-    else
-
-           list = [list;  filename];
- 
-        handles.batch_data(batch_selected).file_list = [handles.batch_data(batch_selected).file_list; fullpath];
-    end
-    
-   
-    
-    [~, ~, ext] = fileparts(fullpath{end});
-    if strcmp(ext, '.nii')
-        % Read and autoset TE if present in description field
-        % Use last file on list by default
-        [nii.hdr,nii.filetype,nii.fileprefix,nii.machine] = load_nii_hdr(fullpath{end});
-        te = nii.hdr.hist.descrip;
-    else
-        te = '';
-    end
-    
-    
-    if ~isempty(te)
-        set(handles.te_box,'String',te);
-        handles.batch_data(batch_selected).parameters = te;
-    else
-        set(handles.te_box,'String','');
-        handles.batch_data(batch_selected).parameters = '';
-    end
-    
-    % Adding files to list, need to calculateMap. set toggle to reflect
-    % this
-    handles.batch_data(batch_selected).to_do = 1;
-    
-    set(handles.filename_box,'String',list, 'Value',1);
-    
-    % Update handles structure
-    handles = update_parameters(handles, batch_selected);
-    JOB_struct = setup_job(handles);
+    return;
 end
+
+%disp(['User selected ', fullfile(pathname, filename)])
+list = get(handles.filename_box,'String');
+
+% Combine path and filename together
+fullpath = strcat(pathname,filename);
+
+% Stupid matlab uses a different datastructure if only one file
+% is selected, handle special case
+if ischar(list)
+    list = {list};
+end
+if ischar(filename)
+    filename = {filename};
+end
+if ischar(fullpath)
+    fullpath = {fullpath};
+end
+if isempty(list)
+    list = {''};
+end
+
+filename = filename';
+fullpath = fullpath';
+
+
+% Add selected files to listbox
+if strcmp(list,'No Files')
+    list = filename;
+    handles.batch_data(batch_selected).file_list = fullpath;
+elseif isempty(list(1)) || isempty(list{1}) 
+    list = filename;
+    handles.batch_data(batch_selected).file_list = fullpath;
+else
+    list = [list;  filename];
+    handles.batch_data(batch_selected).file_list = [handles.batch_data(batch_selected).file_list; fullpath];
+end
+
+[~, ~, ext] = fileparts(fullpath{end});
+if strcmp(ext, '.nii')
+    % Read and autoset TE if present in description field
+    % Use last file on list by default
+    [nii.hdr,nii.filetype,nii.fileprefix,nii.machine] = load_nii_hdr(fullpath{end});
+    te = nii.hdr.hist.descrip;
+else
+    te = '';
+end
+
+
+if ~isempty(te)
+    set(handles.te_box,'String',te);
+    handles.batch_data(batch_selected).parameters = str2num(te);
+else
+    set(handles.te_box,'String','');
+    handles.batch_data(batch_selected).parameters = '';
+end
+
+% Adding files to list, need to calculateMap. set toggle to reflect
+% this
+handles.batch_data(batch_selected).to_do = 1;
+
+set(handles.filename_box,'String',list, 'Value',1);
+
+% Update handles structure
+handles = update_parameters(handles, batch_selected);
+
+[errormsg] = quick_check(handles);
+handles = disp_error(errormsg, handles);
 
 guidata(hObject, handles);
 
@@ -231,14 +229,18 @@ index_selected = get(handles.filename_box,'Value');
 batch_selected = get(handles.batch_set,'Value');
 
 list = get(handles.filename_box,'String');
-if ~isempty(list)
-curfile_list = handles.batch_data(batch_selected).file_list;
-list(index_selected) = [];
-curfile_list(index_selected) = [];
+if ~isempty(list) && ~strcmp(list,'No Files')
+    curfile_list = handles.batch_data(batch_selected).file_list;
+    list(index_selected) = [];
+    curfile_list(index_selected) = [];
 
-handles.batch_data(batch_selected).file_list = curfile_list;
-set(handles.filename_box,'String',list, 'Value',1)
+    handles.batch_data(batch_selected).file_list = curfile_list;
+    set(handles.filename_box,'String',list, 'Value',1)
 end
+
+[errormsg] = quick_check(handles);
+handles = disp_error(errormsg, handles);
+
 guidata(hObject, handles);
 
 % --- Executes on selection change in filename_box.
@@ -277,12 +279,9 @@ guidata(hObject, handles);
 % Get Selected Dataset
 batch_selected = get(handles.batch_set,'Value');
 
-te = get(hObject,'String');
-handles.batch_data(batch_selected).parameters = str2num(te);
-
 % Update handles structure
 handles = update_parameters(handles, batch_selected);
-JOB_struct = setup_job(handles);
+% JOB_struct = setup_job(handles);
 
 guidata(hObject, handles);
 
@@ -480,11 +479,8 @@ function output_basename_Callback(hObject, eventdata, handles)
 % Get Selected Dataset
 batch_selected = get(handles.batch_set,'Value');
 
-handles.batch_data(batch_selected).output_basename = get(hObject,'String');
-
 % Update handles structure
 handles = update_parameters(handles, batch_selected);
-JOB_struct = setup_job(handles);
 
 guidata(hObject, handles);
 
@@ -546,6 +542,7 @@ elseif ~isempty(strfind(fit_type, 'user_input'));
         'Pick custom fit file generated from cftool');
     
     if ~filename
+        set(get(handles.fit_type,'SelectedObject'), 'Value', 0);
         return
     end
     
@@ -580,7 +577,7 @@ elseif ~isempty(strfind(fit_type, 'user_input'));
         handles.batch_data(batch_selected).ncoeffs           = ncoeffs;
         handles.batch_data(batch_selected).coeffs            = coeffs;
         handles.batch_data(batch_selected).tr_present        = tr_present;
-	else
+    else
         display{1} = ['Equation: ' equation];
         display{2} = [num2str(ncoeffs) ' variables:'];
         set(handles.user_input_fn, 'String', display);
@@ -603,17 +600,11 @@ end
 handles.batch_data(batch_selected).fit_type = fit_type;
 handles.batch_data(batch_selected).output_basename = get(handles.output_basename, 'String');
 
-
-% submit = 0;
-% dataset_num = batch_selected;
+% Update handles structure
+handles = update_parameters(handles, batch_selected);
 
 [errormsg] = quick_check(handles);
 handles = disp_error(errormsg, handles);
-
-% Update handles structure
-handles = update_parameters(handles, batch_selected);
-% JOB_struct = setup_job(handles);
-
 
 if isempty(errormsg)
 %     [single_IMG submit data_setnum, errormsg] = calculateMap_batch(JOB_struct, submit, dataset_num);
@@ -634,8 +625,8 @@ if isempty(errormsg)
 %         
 %     end
 else
-    set(get(handles.fit_type,'SelectedObject'), 'Value', 0);
-    set(handles.output_basename, 'String', '');
+%     set(get(handles.fit_type,'SelectedObject'), 'Value', 0);
+%     set(handles.output_basename, 'String', '');
 end
 
 
@@ -667,7 +658,6 @@ batch_selected = get(handles.batch_set,'Value');
 
 % Update handles structure
 handles = update_parameters(handles, batch_selected);
-% handles.batch_data(batch_selected).rsquared = str2num(get(hObject,'String'));
 
 [errormsg] = quick_check(handles);
 handles = disp_error(errormsg, handles);
@@ -702,11 +692,8 @@ function odd_echoes_Callback(hObject, eventdata, handles)
 % Get Selected Dataset
 batch_selected = get(handles.batch_set,'Value');
 
-handles.batch_data(batch_selected).odd_echoes =  get(hObject,'Value');
-
 % Update handles structure
 handles = update_parameters(handles, batch_selected);
-JOB_struct = setup_job(handles);
 
 guidata(hObject, handles);
 
@@ -723,11 +710,9 @@ function tr_Callback(hObject, eventdata, handles)
 % Get Selected Dataset
 batch_selected = get(handles.batch_set,'Value');
 
-handles.batch_data(batch_selected).tr =  str2num(get(hObject,'String'));
-
 % Update handles structure
 handles = update_parameters(handles, batch_selected);
-JOB_struct = setup_job(handles);
+
 
 guidata(hObject, handles);
 
@@ -758,29 +743,6 @@ function batch_num_Callback(hObject, eventdata, handles)
 % --- Executes during object creation, after setting all properties.
 function batch_num_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to batch_num (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-
-function batch_total_Callback(hObject, eventdata, handles)
-% hObject    handle to batch_total (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of batch_total as text
-%        str2double(get(hObject,'String')) returns contents of batch_total as a double
-
-
-% --- Executes during object creation, after setting all properties.
-function batch_total_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to batch_total (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -841,27 +803,29 @@ function remove_batch_Callback(hObject, eventdata, handles)
 index_selected = get(handles.batch_set,'Value');
 list = get(handles.batch_set,'String');
 
-if ~isempty(list)
-list(index_selected,:) = [];
-handles.batch_data(index_selected) = [];
-handles.datasets = handles.datasets - 1;
-set(handles.batch_total, 'String', num2str(handles.datasets), 'Value', 1);
+if ~isempty(list) && ~strcmp(list,'No Datasets')
+    list(index_selected,:) = [];
+    handles.batch_data(index_selected) = [];
+    handles.datasets = handles.datasets - 1;
+    set(handles.batch_total, 'String', num2str(handles.datasets), 'Value', 1);
 
-if handles.datasets < 1
-    set(handles.selected_dataset, 'String', 'No current Dataset');
-    list = '';
-    list(1,:) = 'No Datasets';
-else
-    set(handles.selected_dataset, 'String', 'Reselect Dataset');
-end
+    if handles.datasets < 1
+        set(handles.selected_dataset, 'String', 'No current Dataset');
+        set(handles.batch_set,'String', 'No Datasets');
+        % Create new default dataset
+        handles = makeNewbatch(handles);
 
-index_selected
-set(handles.batch_set,'String',list, 'Value',1)
+    else
+        set(handles.selected_dataset, 'String', 'Reselect Dataset');
+        
+        % Attempt to select the top dataset
+        set(handles.batch_set,'String',list, 'Value',1)
+        set(handles.filename_box, 'String', '');
 
-set(handles.filename_box, 'String', '');
-
-JOB_struct = setup_job(handles);
-handles = update_handles(handles, JOB_struct);
+        JOB_struct = setup_job(handles);
+        handles = update_handles(handles, JOB_struct);
+        handles = load_batch(handles);
+    end
 end
 
 guidata(hObject, handles);
@@ -1024,28 +988,11 @@ guidata(hObject, handles);
 % Get Selected Dataset
 batch_selected = get(handles.batch_set,'Value');
 
-data_order = get(get(handles.data_order,'SelectedObject'),'Tag');
-if ~isempty(strfind(data_order,'xyzn'))
-    handles.batch_data(batch_selected).data_order = 'xyzn';
-    
-elseif ~isempty(strfind(data_order, 'xynz'))
-    handles.batch_data(batch_selected).data_order = 'xynz';
-    
-elseif ~isempty(strfind(data_order, 'xyzfile'));
-    handles.batch_data(batch_selected).data_order = 'xyzfile';
-    
-else
-    %Nothing right now
-    
-end
+% Update handles structure
+handles = update_parameters(handles, batch_selected);
 
 [errormsg] = quick_check(handles);
 handles = disp_error(errormsg, handles);
-
-% Update handles structure
-handles = update_parameters(handles, batch_selected);
-JOB_struct = setup_job(handles);
-
 
 % Update handles structure
 guidata(hObject, handles);
@@ -1253,7 +1200,7 @@ function fit_type_ButtonDownFcn(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-disp('ButtonDow')
+% disp('ButtonDow')
 
 
 % --- Executes on key press with focus on remove_files and none of its controls.
@@ -1308,7 +1255,7 @@ else
         
         % Update handles structure
         handles = update_parameters(handles, batch_selected);
-        JOB_struct = setup_job(handles);
+%         JOB_struct = setup_job(handles);
         set(handles.filename_box, 'Value', file_selected-1);
     end
 end
@@ -1326,37 +1273,36 @@ function file_down_Callback(hObject, eventdata, handles)
 guidata(hObject, handles);
 
 % Check if there is a dataset already. If not, do nothing.
-list = get(handles.batch_set,'String');
-
-if strcmp(list,'No Datasets')
-    
-else
+batch_list = get(handles.batch_set,'String');
+if ~isempty(batch_list) && ~strcmp(batch_list,'No Datasets')
     % Get the list of files present
-    list = get(handles.filename_box,'String');
+    temp_file_list = get(handles.filename_box,'String');
+    if ischar(temp_file_list)
+        temp_file_list = {temp_file_list};
+    end
     % Get Selected Dataset
-    batch_selected = get(handles.batch_set,'Value');
-    
+    batch_selected = get(handles.batch_set,'Value');    
     % Get selected File
     file_selected  = get(handles.filename_box, 'Value');
-    
-    if file_selected < numel(list);
+
+    if file_selected < numel(temp_file_list);
         curfile_list = handles.batch_data(batch_selected).file_list;
         
         newfile_list = curfile_list;
-        newlist      = list;
+        newlist      = temp_file_list;
         
         newfile_list(file_selected+1) = curfile_list(file_selected);
-        newlist(file_selected+1)      = list(file_selected);
+        newlist(file_selected+1)      = temp_file_list(file_selected);
         
         newfile_list(file_selected)   = curfile_list(file_selected+1);
-        newlist(file_selected)        = list(file_selected+1);
+        newlist(file_selected)        = temp_file_list(file_selected+1);
         
         handles.batch_data(batch_selected).file_list = newfile_list;
         set(handles.filename_box,'String',newlist, 'Value',1)
         
         % Update handles structure
         handles = update_parameters(handles, batch_selected);
-        JOB_struct = setup_job(handles);
+%         JOB_struct = setup_job(handles);
         set(handles.filename_box, 'Value', file_selected+1);
     end
 end
@@ -1441,11 +1387,11 @@ if isempty(errormsg)
     elseif isempty(single_IMG)
         errormsg = 'Empty image';
         handles = disp_error(errormsg, handles);
-	else
-		%Store Image
-		batch_selected = get(handles.batch_set,'Value');
-		handles.batch_data(batch_selected).preview_image = single_IMG;
-		
+    else
+        %Store Image
+        batch_selected = get(handles.batch_set,'Value');
+        handles.batch_data(batch_selected).preview_image = single_IMG;
+        
         %Display Image
         handles = visualize_R2(handles);
     end
