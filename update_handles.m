@@ -57,7 +57,7 @@ if numel(batch_data) > 0
     end
     %set(handles.data_order, 'SelectedObject', curfilelist.data_order);
     %set(handles.fit_type, 'SelectedObject', curfilelist.fit_type);
-    set(handles.te_box, 'String', curfilelist.parameter);
+    set(handles.te_box, 'String', curfilelist.parameters);
     set(handles.output_basename, 'String', curfilelist.output_basename);
     set(handles.rsquared_threshold, 'String', curfilelist.rsquared);
     set(handles.tr, 'String', curfilelist.tr);
