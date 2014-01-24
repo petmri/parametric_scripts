@@ -7,9 +7,9 @@ number_voxels = dim_x*dim_y*dim_z;
 
 % Preallocate for speed
 if strfind(fit_type, 'user_input')
-    fit_output = zeros([number_voxels 3*ncoeffs+1],'double');
+    fit_output = zeros([number_voxels 3*ncoeffs+2],'double');
 else
-    fit_output = zeros([number_voxels 5],'double');
+    fit_output = zeros([number_voxels 6],'double');
 end
 
 % Break up parfor to allow for progress bar, and create progress bar

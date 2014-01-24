@@ -489,10 +489,34 @@ end
 
 % Save text and data structure logs if desired.
 if separate_logs && submit
+    % Create data structures for curve fit analysis
+    fit_data.fit_voxels = logical(numel(shaped_image));
+    fit_data.fitting_results = fit_output;
+    fit_data.model_name = fit_type;
+    fit_data.number_rois = 0;
+    fit_data.fit_file = fit_file;
+    fit_data.ncoeffs = ncoeffs;
+    fit_data.coeffs = coeffs;
+    xdata{1}.x_values = parameter_list;
+    xdata{1}.y_values = shaped_image;
+    xdata{1}.tr = tr;
+    xdata{1}.dimensions = [dim_x, dim_y, dim_z];
+    xdata{1}.numvoxels = numel(fit_output);
+    if strfind(fit_type,'ADC')
+    	xdata{1}.x_units = 'b-value';
+    elseif strfind(fit_type,'fa')
+        xdata{1}.x_units = 'FA (degrees)';
+    elseif strcmp(fit_type,'user_input')
+        xdata{1}.x_units = 'a.u.';
+    else
+        xdata{1}.x_units = 'ms';
+    end
+    xdata{1}.y_units = 'a.u.';
+    
     log_name = strrep(fullpathT2, '.nii', ['_' num2str(dataset) '_' t '_log.mat']);
     
     if save_log
-        save(log_name, 'JOB_struct', '-mat');
+        save(log_name, 'JOB_struct','fit_data','xdata', '-mat');
         disp(['Saved log at: ' log_name]);
     end
 end

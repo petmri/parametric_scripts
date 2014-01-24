@@ -74,6 +74,7 @@ if r_squared>=rsquared_threshold
         [cf_, gof] = fit(parameter(ok_),si(ok_),ft_,fo_);
         
         % Save Results
+        sum_squared_error = gof.sse;
         r_squared = gof.rsquare;
         confidence_interval = confint(cf_,0.95);
         rho_fit = cf_.a;
@@ -93,6 +94,7 @@ if r_squared>=rsquared_threshold
         [cf_, gof] = fit(parameter(ok_),si(ok_),ft_,fo_);
         
         % Save Results
+        sum_squared_error = gof.sse;
         r_squared = gof.rsquare;
         confidence_interval = confint(cf_,0.95);
         rho_fit = cf_.a;
@@ -110,6 +112,7 @@ if r_squared>=rsquared_threshold
         [cf_, gof] = fit(parameter(ok_),ln_si(ok_),ft_,fo_);
         
         % Save Results
+        sum_squared_error = gof.sse;
         r_squared = gof.rsquare;
         confidence_interval = confint(cf_,0.95);
         rho_fit = cf_.p2;
@@ -128,6 +131,7 @@ if r_squared>=rsquared_threshold
         [cf_, gof] = fit(parameter(ok_),ln_si(ok_),ft_,fo_);
         
         % Save Results
+        sum_squared_error = gof.sse;
         r_squared = gof.rsquare;
         confidence_interval = confint(cf_,0.95);
         rho_fit = cf_.p2;
@@ -144,6 +148,7 @@ if r_squared>=rsquared_threshold
         [cf_, gof] = fit(parameter(ok_),ln_si(ok_),ft_,fo_);
         
         % Save Results
+        sum_squared_error = gof.sse;
         r_squared = gof.rsquare;
         confidence_interval = confint(cf_,0.95);
         rho_fit = cf_.p2;
@@ -160,6 +165,7 @@ if r_squared>=rsquared_threshold
         [cf_, gof] = fit(parameter(ok_),ln_si(ok_),ft_,fo_);
         
         % Save Results
+        sum_squared_error = gof.sse;
         r_squared = gof.rsquare;
         confidence_interval = confint(cf_,0.95);
         rho_fit = cf_.p2;
@@ -175,8 +181,9 @@ if r_squared>=rsquared_threshold
         y = ln_si(ok_)-Ybar;
         x = parameter(ok_)-Xbar;
         slope =sum(x.*y)/sum(x.^2);
-        intercept = Ybar-slope.*Xbar; %#ok<NASGU>
+        intercept = Ybar-slope.*Xbar; 
         r_squared = (sum(x.*y)/sqrt(sum(x.^2)*sum(y.^2)))^2;
+        sum_squared_error = (1-r_squared)*sum(y.^2);
         if ~isfinite(r_squared) || ~isreal(r_squared)
             r_squared = 0;
         end
@@ -196,8 +203,9 @@ if r_squared>=rsquared_threshold
         y = ln_si(ok_)-Ybar;
         x = parameter(ok_)-Xbar;
         slope =sum(x.*y)/sum(x.^2);
-        intercept = Ybar-slope.*Xbar; %#ok<NASGU>
+        intercept = Ybar-slope.*Xbar; 
         r_squared = (sum(x.*y)/sqrt(sum(x.^2)*sum(y.^2)))^2;
+        sum_squared_error = (1-r_squared)*sum(y.^2);
         if ~isfinite(r_squared) || ~isreal(r_squared)
             r_squared = 0;
         end
@@ -220,6 +228,7 @@ if r_squared>=rsquared_threshold
         [cf_, gof] = fit(parameter(ok_),si(ok_),ft_,fo_);
         
         % Save Results
+        sum_squared_error = gof.sse;
         r_squared = gof.rsquare;
         confidence_interval = confint(cf_,0.95);
         rho_fit = cf_.a;
@@ -246,6 +255,7 @@ if r_squared>=rsquared_threshold
         [cf_, gof] = fit([parameter(ok_),tr_array],si(ok_),ft_,fo_);
         
         % Save Results
+        sum_squared_error = gof.sse;
         r_squared = gof.rsquare;
         confidence_interval = confint(cf_,0.95);
         % Scale a as it was fit to a scaled dataset
@@ -265,14 +275,15 @@ if r_squared>=rsquared_threshold
         intercept = Ybar-slope.*Xbar;
         
         r_squared = (sum(x.*y)/sqrt(sum(x.^2)*sum(y.^2)))^2;
+        sum_squared_error = (1-r_squared)*sum(y.^2);
         if ~isfinite(r_squared)
             r_squared = 0;
         end
         rho_fit = intercept;
         exponential_fit   = -tr/log(slope);
-        if exponential_fit>5000
-            exponential_fit = 5001;
-        end
+%         if exponential_fit>10000
+%             exponential_fit = 10001;
+%         end
         if exponential_fit<0
             exponential_fit = -0.5;
         end
@@ -298,6 +309,7 @@ if r_squared>=rsquared_threshold
         [cf_, gof] = fit([parameter(ok_),tr_array],si(ok_),ft_,fo_);
         
         % Save Results
+        sum_squared_error = gof.sse;
         r_squared = gof.rsquare;
         confidence_interval = confint(cf_,0.95);
         % Scale a as it was fit to a scaled dataset
@@ -321,6 +333,7 @@ if r_squared>=rsquared_threshold
         [cf_, gof, output] = userFN(parameter(ok_), si(ok_));
         
         % Save Results
+        sum_squared_error = gof.sse;
         r_squared = gof.rsquare;
         confidence_interval = confint(cf_,0.95);
         %rho_fit = cf_.a;
@@ -331,6 +344,7 @@ if r_squared>=rsquared_threshold
         coeffvals = coeffvals(:)';
 
     elseif(strcmp(fit_type,'none'))
+        sum_squared_error = 0;
         r_squared = 1;
         rho_fit = 1;
         exponential_fit   = 1;
@@ -342,12 +356,12 @@ else
     exponential_fit = -2;
     exponential_95_ci(1) = -2;
     exponential_95_ci(2) = -2;
- 
+    sum_squared_error = -2;
 end
 
 if ~strcmp(fit_type, 'user_input')
-    fit_output = [exponential_fit rho_fit r_squared exponential_95_ci(1) exponential_95_ci(2)];
+    fit_output = [exponential_fit rho_fit r_squared exponential_95_ci(1) exponential_95_ci(2) sum_squared_error];
 else
-    fit_output = [coeffvals r_squared exponential_95_ci(1,:) exponential_95_ci(2,:)];
+    fit_output = [coeffvals r_squared exponential_95_ci(1,:) exponential_95_ci(2,:) sum_squared_error];
     
 end
