@@ -238,7 +238,8 @@ if r_squared>=rsquared_threshold
         % Convert flip angle (stored in te) from sdegrees to radians
         parameter = parameter*pi/180;
         % scale si, non-linear fit has trouble converging with big numbers
-        si = si./max(si);
+        scale_max = max(si);
+        si = si./scale_max;
         
         % Restrict fits for T1 from 0ms to 5000ms, and coefficient ('rho') from
         % 0 to inf
@@ -259,7 +260,7 @@ if r_squared>=rsquared_threshold
         r_squared = gof.rsquare;
         confidence_interval = confint(cf_,0.95);
         % Scale a as it was fit to a scaled dataset
-        rho_fit = cf_.a*max(si);
+        rho_fit = cf_.a*scale_max;
         exponential_fit   = cf_.t1;
         exponential_95_ci = confidence_interval(:,2);
     elseif(strcmp(fit_type,'t1_fa_linear_fit'))
@@ -292,7 +293,8 @@ if r_squared>=rsquared_threshold
         % te stores the TI in ms
         
         % scale si, non-linear fit has trouble converging with big numbers
-        si = si./max(si);
+        scale_max = max(si);
+        si = si./scale_max;
         
         % Restrict fits for T1 from 0ms to 5000ms, and coefficient ('rho') from
         % 0 to inf
@@ -313,7 +315,7 @@ if r_squared>=rsquared_threshold
         r_squared = gof.rsquare;
         confidence_interval = confint(cf_,0.95);
         % Scale a as it was fit to a scaled dataset
-        rho_fit = cf_.a*max(si);
+        rho_fit = cf_.a*scale_max;
         exponential_fit   = cf_.t1;
         exponential_95_ci = confidence_interval(:,2);
         
@@ -328,7 +330,8 @@ if r_squared>=rsquared_threshold
         userFN = str2func(NAME);
         
         % scale si, non-linear fit has trouble converging with big numbers
-        si = si./max(si);
+        scale_max = max(si);
+        si = si./scale_max;
             
         [cf_, gof, output] = userFN(parameter(ok_), si(ok_));
         
