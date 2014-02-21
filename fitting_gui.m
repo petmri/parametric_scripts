@@ -229,7 +229,7 @@ index_selected = get(handles.filename_box,'Value');
 batch_selected = get(handles.batch_set,'Value');
 
 list = get(handles.filename_box,'String');
-if ~isempty(list) && ~strcmp(list,'No Files')
+if ~isempty(list) && ~strcmp(list(1),'No Files')
     curfile_list = handles.batch_data(batch_selected).file_list;
     list(index_selected) = [];
     curfile_list(index_selected) = [];
