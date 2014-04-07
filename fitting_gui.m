@@ -22,7 +22,7 @@ function varargout = fitting_gui(varargin)
 
 % Edit the above text to modify the response to help fitting_gui
 
-% Last Modified by GUIDE v2.5 04-Jan-2014 14:57:39
+% Last Modified by GUIDE v2.5 04-Apr-2014 11:20:53
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -1012,13 +1012,13 @@ curtoggle = get(hObject,'Value');
 if(curtoggle)
     
     set(handles.email_log,'Enable','on');
-    set(handles.separate_logs, 'Enable', 'on');
+    set(handles.batch_log, 'Enable', 'on');
 else
     %No log save, need to uncheck everything else
     set(handles.email_log, 'Value', 0);
-    set(handles.separate_logs, 'Value', 0);
+    set(handles.batch_log, 'Value', 0);
     set(handles.email_log,'Enable','off');
-    set(handles.separate_logs, 'Enable', 'off');
+    set(handles.batch_log, 'Enable', 'off');
 end
 
 % Update handles structure
@@ -1034,13 +1034,13 @@ function email_log_Callback(hObject, eventdata, handles)
 % Hint: get(hObject,'Value') returns toggle state of email_log
 
 
-% --- Executes on button press in separate_logs.
-function separate_logs_Callback(hObject, eventdata, handles)
-% hObject    handle to separate_logs (see GCBO)
+% --- Executes on button press in batch_log.
+function batch_log_Callback(hObject, eventdata, handles)
+% hObject    handle to batch_log (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hint: get(hObject,'Value') returns toggle state of separate_logs
+% Hint: get(hObject,'Value') returns toggle state of batch_log
 
 
 

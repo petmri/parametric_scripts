@@ -1,10 +1,10 @@
 
-function [single_IMG, errormsg, JOB_struct, new_txtname] = calculateMap(JOB_struct, dataset);
+function [single_IMG, errormsg, JOB_struct, txtlog_output_path] = calculateMap(JOB_struct, dataset)
 
 % Initialize empty variables
 single_IMG = '';
 errormsg   = '';
-new_txtname   = '';
+txtlog_output_path   = '';
 
 % Sanity check on input
 if nargin < 1
@@ -20,7 +20,7 @@ email          = JOB_struct(1).email;
 cur_dataset    = JOB_struct(1).batch_data;
 save_log       = JOB_struct(1).save_log;
 email_log      = JOB_struct(1).email_log;
-separate_logs  = JOB_struct(1).separate_logs;
+batch_log      = JOB_struct(1).batch_log;
 current_dir    = JOB_struct(1).current_dir;
 log_name       = JOB_struct(1).log_name;
 submit         = JOB_struct(1).submit;
@@ -53,16 +53,15 @@ end
 
 % Start logging txt if save_txt
 if save_txt && submit
-    imagefile=cell2mat(file_list(1));
+    imagefile=cell2mat(file_list(end));
     % Read file and get header information
     [file_path, filename]  = fileparts(imagefile);
     
-    % Add a timestamp in case of overlap
-    t = strrep(strrep(datestr(now), ' ', ''), ':', '_');
-    
     if exist(file_path)
-        txt_name = fullfile(file_path, [filename, t, '_log.txt']);
-        diary(txt_name);
+        % Make log name the same as the saved map name
+        txtlog_output_path = fullfile(file_path, [output_basename, '_', fit_type,'_', filename ...
+                ,'.txt']);
+        diary(txtlog_output_path);
     else
         errormsg = warning('Path of files does not exist');
         return;
@@ -462,7 +461,7 @@ for n=1:number_of_fits
             disp(fullpathT2);
         end
         
-        %    number_cps, neuroecon, separate_logs, log_name, cur_dataset, submit
+        %    number_cps, neuroecon, batch_log, log_name, cur_dataset, submit
         
         single_IMG = 1;
     else
@@ -488,7 +487,7 @@ end
 
 
 % Save text and data structure logs if desired.
-if separate_logs && submit
+if submit
     % Create data structures for curve fit analysis
     fit_data.fit_voxels = logical(numel(shaped_image));
     fit_data.fitting_results = fit_output;
@@ -513,7 +512,7 @@ if separate_logs && submit
     end
     xdata{1}.y_units = 'a.u.';
     
-    log_name = strrep(fullpathT2, '.nii', ['_' num2str(dataset) '_' t '_log.mat']);
+    log_name = strrep(fullpathT2, '.nii', '.mat');
     
     if save_log
         save(log_name, 'JOB_struct','fit_data','xdata', '-mat');
@@ -523,47 +522,8 @@ end
 
 if submit
     diary off
-    
-    if save_txt
-        [~, fn] = fileparts(txt_name);
-        new_txtname=fullfile(current_dir, [fn '.txt']);
-        
-        % Only copy if it is to a different directory
-        if ~strcmp(txt_name,new_txtname)
-            if ~separate_logs
-                copyfile(txt_name, new_txtname);
-                delete(txt_name);
-            else
-                copyfile(txt_name, new_txtname);
-            end
-        end
-    else
-        delete(txt_name);
-    end
 end
 
 
-
-
-% if ~isempty(email)
-%     % Email the person on completion
-%     % Define these variables appropriately:
-%     mail = 'immune.caltech@gmail.com'; %Your GMail email address
-%     password = 'antibody'; %Your GMail password
-%     % Then this code will set up the preferences properly:
-%     setpref('Internet','E_mail',mail);
-%     setpref('Internet','SMTP_Server','smtp.gmail.com');
-%     setpref('Internet','SMTP_Username',mail);
-%     setpref('Internet','SMTP_Password',password);
-%     props = java.lang.System.getProperties;
-%     props.setProperty('mail.smtp.auth','true');
-%     props.setProperty('mail.smtp.socketFactory.class', 'javax.net.ssl.SSLSocketFactory');
-%     props.setProperty('mail.smtp.socketFactory.port','465');
-%
-%     hostname = char( getHostName( java.net.InetAddress.getLocalHost ) );
-%
-%     sendmail(email,'MRI map processing completed',['Hello! Your Map Calc job on '...
-%         ,hostname,' is done! compution time was ',datestr(datenum(0,0,0,0,0,total_time),'HH:MM:SS')]);
-% end
 
 
