@@ -9,9 +9,11 @@ end
     
 batch_selected = get(handles.batch_set,'Value');
 list = handles.batch_data(batch_selected).file_list;
+roi_list = handles.batch_data(batch_selected).roi_list;
 
 %Remove the directory path to allow nice visualization
 list = visualize_list(list);
+roi_list = visualize_list(roi_list);
 
 %handles.batch_data(cur_batch)
 
@@ -28,6 +30,7 @@ handles = visualize_R2(handles);
 
 % Set radiobuttons
 set(handles.filename_box,'String',list, 'Value',1);
+set(handles.roi_box,'String',roi_list, 'Value',1);
 handles.batch_data(batch_selected).fit_type;
 if ~isempty(handles.batch_data(batch_selected).fit_type)
     eval(['set(handles.' handles.batch_data(batch_selected).fit_type ', ''Value'', 1)']);

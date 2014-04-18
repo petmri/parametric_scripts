@@ -22,7 +22,7 @@ function varargout = fitting_gui(varargin)
 
 % Edit the above text to modify the response to help fitting_gui
 
-% Last Modified by GUIDE v2.5 04-Apr-2014 11:20:53
+% Last Modified by GUIDE v2.5 18-Apr-2014 12:59:29
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -47,11 +47,6 @@ end
 
 % --- Executes just before fitting_gui is made visible.
 function fitting_gui_OpeningFcn(hObject, eventdata, handles, varargin)
-% This function has no output args, see OutputFcn.
-% hObject    handle to figure
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-% varargin   command line arguments to fitting_gui (see VARARGIN)
 
 % Choose default command line output for fitting_gui
 handles.output = hObject;
@@ -72,6 +67,11 @@ set(handles.current_dir, 'String', pwd);
 
 % initialize file_list
 handles.batch_data(1).file_list = {};
+handles.batch_data(1).roi_list = {'No Files'};
+
+% Create structure to hold files and roi lists
+handles.roi_list = {};
+% handles.file_list = {};
 
 % initialize masterlog name
 master_name = strrep(['ROCKETSHIP_MAPPING_' strrep(datestr(now), ' ', '_') '.log'], ':', '-');
@@ -103,10 +103,6 @@ guidata(hObject, handles);
 
 % --- Outputs from this function are returned to the command line.
 function varargout = fitting_gui_OutputFcn(hObject, eventdata, handles)
-% varargout  cell array for returning output args (see VARARGOUT);
-% hObject    handle to figure
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 
 % Get default command line output from handles structure
 varargout{1} = handles.output;
@@ -114,11 +110,7 @@ varargout{1} = handles.output;
 
 % --- Executes on button press in add_files.
 function add_files_Callback(hObject, eventdata, handles)
-% hObject    handle to add_files (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 
-% Update handles structure
 guidata(hObject, handles);
 
 % Check if there is a dataset already. If not, add one.
@@ -128,9 +120,6 @@ if strcmp(list,'No Datasets')
     handles = makeNewbatch(handles);
     guidata(hObject, handles);
 end
-
-% Get Selected Dataset
-batch_selected = get(handles.batch_set,'Value');
 
 [filename, pathname, filterindex] = uigetfile( ...
     { '*.nii','Nifti Files (*.nii)'; ...
@@ -169,19 +158,27 @@ end
 filename = filename';
 fullpath = fullpath';
 
+% Get Selected Dataset
+batch_selected = get(handles.batch_set,'Value');
+
 
 % Add selected files to listbox
 if strcmp(list,'No Files')
     list = filename;
+%     handles.file_list = fullpath;
     handles.batch_data(batch_selected).file_list = fullpath;
 elseif isempty(list(1)) || isempty(list{1}) 
     list = filename;
+%     handles.file_list = fullpath;
     handles.batch_data(batch_selected).file_list = fullpath;
 else
     list = [list;  filename];
+%     handles.file_list = [handles.file_list; fullpath];
     handles.batch_data(batch_selected).file_list = [handles.batch_data(batch_selected).file_list; fullpath];
 end
+set(handles.filename_box,'String',list, 'Value',1);
 
+% Load file
 [~, ~, ext] = fileparts(fullpath{end});
 if strcmp(ext, '.nii')
     % Read and autoset TE if present in description field
@@ -192,23 +189,23 @@ else
     te = '';
 end
 
-
+% Auto fill TE
 if ~isempty(te)
     set(handles.te_box,'String',te);
-    handles.batch_data(batch_selected).parameters = str2num(te);
+%     handles.batch_data(batch_selected).parameters = str2num(te);
 else
     set(handles.te_box,'String','');
-    handles.batch_data(batch_selected).parameters = '';
+%     handles.batch_data(batch_selected).parameters = '';
 end
+
+
+% Update handles structure
+handles = update_parameters(handles, batch_selected);
 
 % Adding files to list, need to calculateMap. set toggle to reflect
 % this
 handles.batch_data(batch_selected).to_do = 1;
 
-set(handles.filename_box,'String',list, 'Value',1);
-
-% Update handles structure
-handles = update_parameters(handles, batch_selected);
 
 [errormsg] = quick_check(handles);
 handles = disp_error(errormsg, handles);
@@ -220,9 +217,7 @@ guidata(hObject, handles);
 
 % --- Executes on button press in remove_files.
 function remove_files_Callback(hObject, eventdata, handles)
-% hObject    handle to remove_files (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
+
 index_selected = get(handles.filename_box,'Value');
 
 % Get Selected Dataset
@@ -243,37 +238,9 @@ handles = disp_error(errormsg, handles);
 
 guidata(hObject, handles);
 
-% --- Executes on selection change in filename_box.
-function filename_box_Callback(hObject, eventdata, handles)
-% hObject    handle to filename_box (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: contents = cellstr(get(hObject,'String')) returns filename_box contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from filename_box
-
-
-
-% --- Executes during object creation, after setting all properties.
-function filename_box_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to filename_box (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: listbox controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
 
 
 function te_box_Callback(hObject, eventdata, handles) %#ok<*INUSD>
-% hObject    handle to te_box (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of te_box as text
-%        str2double(get(hObject,'String')) returns contents of te_box as a double
 
 guidata(hObject, handles);
 % Get Selected Dataset
@@ -284,7 +251,7 @@ handles = update_parameters(handles, batch_selected);
 % JOB_struct = setup_job(handles);
 
 guidata(hObject, handles);
-
+uiremember;
 
 
 % --- Executes during object creation, after setting all properties.
@@ -298,39 +265,10 @@ function te_box_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
-
-
 % --- Executes on button press in ok_button.
 function ok_button_Callback(hObject, eventdata, handles) %#ok<*INUSL>
-% hObject    handle to ok_button (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 
 disp('User selected Submit Jobs')
-% file_list = handles.batch_data;
-% parameter_list = get(handles.te_box,'String'); %#ok<ST2NM>
-% fit_type = get(get(handles.fit_type,'SelectedObject'),'Tag');
-% data_order = get(get(handles.data_order,'SelectedObject'),'Tag');
-% % single_fit = get(handles.single_fit,'Value');
-% number_cpus = str2num(get(handles.number_cpus,'String')); %#ok<ST2NM>
-% neuroecon = get(handles.neuroecon,'Value');
-% email = get(handles.email_box,'String');
-% output_basename = get(handles.output_basename,'String');
-% odd_echoes = get(handles.odd_echoes, 'Value');
-% rsquared_threshold = str2num(get(handles.rsquared_threshold, 'String')); %#ok<ST2NM>
-% tr = str2num(get(handles.tr, 'String')); %#ok<ST2NM>
-
-% All files now in file_list structure
-%{
-handles.batch_data().file_list: file_list
-handles.batch_data().parameters: parameter_list
-handles.batch_data().fit_type: fit_type
-handles.batch_data().data_order: xyzn, xynz, xyz/file
-handles.batch_data().output_basename: outputbasename
-handles.batch_data().odd_echoes: odd_echoes
-handles.batch_data().rsquared: rsquared_threshold
-handles.batch_data().tr: tr
-%}
 
 % If do_all toggled, set to_do for all file_list to 1
 if get(handles.do_all, 'Value')
@@ -346,9 +284,7 @@ end
 handles = disp_error(errormsg, handles);
 
 % Reset to_do toggle if needed.
-
 if get(handles.redo_done, 'Value')
-    
     list = handles.batch_data;
     
     for i = 1:numel(list)
@@ -360,121 +296,28 @@ end
 %handles = update_parameters(handles, batch_selected);
 JOB_struct = setup_job(handles);
 
-
 submit = 1;
 dataset_to_process = 0; % 0 for all files
 
-%delete(handles.figure1);
-% disp('User selected files: ');
-% disp(file_list);
-% disp('User slected TE: ');
-% disp(te_list);
-% disp('User slected fit: ');
-% disp(fit_type);
-% disp('User slected CPUs: ');
-% disp(number_cpus);
-% disp('User slected Neuroecon: ');
-% disp(neuroecon);
-% disp('User slected email: ');
-% disp(email);
-
-% Call T2 Function
+% Call fitting Function
 [single_IMG submit data_setnum] = calculateMap_batch(JOB_struct, submit, dataset_to_process);
 
-%calculateMap(file_list,parameter_list,fit_type,odd_echoes,rsquared_threshold, number_cpus, neuroecon, output_basename,data_order,tr, email);
-
-
-% if single_fit
-% 	calculateMultiFile(file_list,te_list,fit_type,rsquared_threshold, number_cpus, neuroecon, output_basename,tr, email);
-% else
-% 	calculateT2(file_list,te_list,fit_type,odd_echoes,rsquared_threshold, number_cpus, neuroecon, output_basename,tr, email);
-% end
 
 % --- Executes on button press in cancel_button.
 function cancel_button_Callback(hObject, eventdata, handles)
-% hObject    handle to cancel_button (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
+
 disp('User selected Cancel')
 delete(handles.figure1);
 
 
-% --- Executes on button press in neuroecon.
-function neuroecon_Callback(hObject, eventdata, handles)
-% hObject    handle to neuroecon (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hint: get(hObject,'Value') returns toggle state of neuroecon
-
-
 
 function number_cpus_Callback(hObject, eventdata, handles)
-% hObject    handle to number_cpus (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of number_cpus as text
-%        str2double(get(hObject,'String')) returns contents of number_cpus as a double
-
 myCluster = parcluster('local');
 set(handles.number_cpus, 'String', num2str(min(str2num(get(hObject,'String')),myCluster.NumWorkers)));
-
-
-
-% --- Executes during object creation, after setting all properties.
-function number_cpus_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to number_cpus (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-
-function email_box_Callback(hObject, eventdata, handles)
-% hObject    handle to email_box (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of email_box as text
-%        str2double(get(hObject,'String')) returns contents of email_box as a double
-
-
-% --- Executes during object creation, after setting all properties.
-function email_box_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to email_box (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-% --- Executes on button press in single_fit.
-function single_fit_Callback(hObject, eventdata, handles)
-% hObject    handle to single_fit (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hint: get(hObject,'Value') returns toggle state of single_fit
-
+uiremember;
 
 
 function output_basename_Callback(hObject, eventdata, handles)
-% hObject    handle to output_basename (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of output_basename as text
-%        str2double(get(hObject,'String')) returns contents of output_basename as a double
 
 % Get Selected Dataset
 batch_selected = get(handles.batch_set,'Value');
@@ -486,28 +329,8 @@ guidata(hObject, handles);
 
 
 
-% --- Executes during object creation, after setting all properties.
-function output_basename_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to output_basename (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-
 % --- Executes when selected object is changed in fit_type.
 function fit_type_SelectionChangeFcn(hObject, eventdata, handles)
-% hObject    handle to the selected object in fit_type
-% eventdata  structure with the following fields (see UIBUTTONGROUP)
-%	EventName: string 'SelectionChanged' (read only)
-%	OldValue: handle of the previously selected object or empty if none was selected
-%	NewValue: handle of the currently selected object
-% handles    structure with handles and user data (see GUIDATA)
 
 % Reset user input
 set(handles.user_input_fn, 'String', 'No user function defined');
@@ -630,20 +453,12 @@ else
 end
 
 
-
-
 % Update handles structure
 guidata(hObject, handles);
 
 
 
 function rsquared_threshold_Callback(hObject, eventdata, handles)
-% hObject    handle to rsquared_threshold (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of rsquared_threshold as text
-%        str2double(get(hObject,'String')) returns contents of rsquared_threshold as a double
 
 cur_r2 = str2double(get(hObject,'String'));
 if isempty(cur_r2)
@@ -666,28 +481,12 @@ handles = visualize_R2(handles);
 
 % Update handles structure
 guidata(hObject, handles);
+uiremember;
 
-
-% --- Executes during object creation, after setting all properties.
-function rsquared_threshold_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to rsquared_threshold (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
 
 
 % --- Executes on button press in odd_echoes.
 function odd_echoes_Callback(hObject, eventdata, handles)
-% hObject    handle to odd_echoes (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hint: get(hObject,'Value') returns toggle state of odd_echoes
 
 % Get Selected Dataset
 batch_selected = get(handles.batch_set,'Value');
@@ -696,16 +495,10 @@ batch_selected = get(handles.batch_set,'Value');
 handles = update_parameters(handles, batch_selected);
 
 guidata(hObject, handles);
-
+uiremember;
 
 
 function tr_Callback(hObject, eventdata, handles)
-% hObject    handle to tr (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of tr as text
-%        str2double(get(hObject,'String')) returns contents of tr as a double
 
 % Get Selected Dataset
 batch_selected = get(handles.batch_set,'Value');
@@ -713,54 +506,15 @@ batch_selected = get(handles.batch_set,'Value');
 % Update handles structure
 handles = update_parameters(handles, batch_selected);
 
-
 guidata(hObject, handles);
+uiremember;
 
 
-% --- Executes during object creation, after setting all properties.
-function tr_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to tr (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-
-function batch_num_Callback(hObject, eventdata, handles)
-% hObject    handle to batch_num (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of batch_num as text
-%        str2double(get(hObject,'String')) returns contents of batch_num as a double
-
-
-% --- Executes during object creation, after setting all properties.
-function batch_num_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to batch_num (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
 
 
 % --- Executes on selection change in batch_set.
 function batch_set_Callback(hObject, eventdata, handles)
-% hObject    handle to batch_set (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 
-% Hints: contents = cellstr(get(hObject,'String')) returns batch_set contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from batch_set
 guidata(hObject, handles);
 
 handles = load_batch(handles);
@@ -769,36 +523,17 @@ guidata(hObject, handles);
 
 
 
-% --- Executes during object creation, after setting all properties.
-function batch_set_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to batch_set (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: listbox controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
 
 % --- Executes on button press in add_batch.
 function add_batch_Callback(hObject, eventdata, handles)
-% hObject    handle to add_batch (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
+
 handles = makeNewbatch(handles);
-
-
 guidata(hObject, handles);
 
 
 
 % --- Executes on button press in remove_batch.
 function remove_batch_Callback(hObject, eventdata, handles)
-% hObject    handle to remove_batch (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 
 index_selected = get(handles.batch_set,'Value');
 list = get(handles.batch_set,'String');
@@ -833,8 +568,6 @@ guidata(hObject, handles);
 
 % --- Executes on slider movement.
 function r2slider_Callback(hObject, eventdata, handles)
-% Hints: get(hObject,'Value') returns position of slider
-%        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
 
 rsquared_slider = get(hObject,'Value');
 set(handles.rsquared_threshold, 'String', num2str(rsquared_slider));
@@ -853,28 +586,7 @@ guidata(hObject, handles);
 
 
 
-
-
-% --- Executes during object creation, after setting all properties.
-function r2slider_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to r2slider (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: slider controls usually have a light gray background.
-if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor',[.9 .9 .9]);
-end
-
-
-
 function slice_num_Callback(hObject, eventdata, handles)
-% hObject    handle to slice_num (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of slice_num as text
-%        str2double(get(hObject,'String')) returns contents of slice_num as a double
 
 cur_slice = str2double(get(hObject,'String'));
 if isempty(cur_slice)
@@ -904,27 +616,8 @@ guidata(hObject, handles);
 
 
 
-% --- Executes during object creation, after setting all properties.
-function slice_num_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to slice_num (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
 % --- Executes on slider movement.
 function slice_slider_Callback(hObject, eventdata, handles)
-% hObject    handle to slice_slider (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'Value') returns position of slider
-%        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
 
 slice_slide = round(get(hObject,'Value'));
 
@@ -953,34 +646,8 @@ guidata(hObject, handles);
 
 
 
-% --- Executes during object creation, after setting all properties.
-function slice_slider_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to slice_slider (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: slider controls usually have a light gray background.
-if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor',[.9 .9 .9]);
-end
-
-
-% --- If Enable == 'on', executes on mouse press in 5 pixel border.
-% --- Otherwise, executes on mouse press in 5 pixel border or over xynz.
-function xynz_ButtonDownFcn(hObject, eventdata, handles)
-% hObject    handle to xynz (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-
 % --- Executes when selected object is changed in data_order.
 function data_order_SelectionChangeFcn(hObject, eventdata, handles)
-% hObject    handle to the selected object in data_order
-% eventdata  structure with the following fields (see UIBUTTONGROUP)
-%	EventName: string 'SelectionChanged' (read only)
-%	OldValue: handle of the previously selected object or empty if none was selected
-%	NewValue: handle of the currently selected object
-% handles    structure with handles and user data (see GUIDATA)
 
 % Update handles structure
 guidata(hObject, handles);
@@ -1000,11 +667,7 @@ guidata(hObject, handles);
 
 % --- Executes on button press in save_txt.
 function save_txt_Callback(hObject, eventdata, handles)
-% hObject    handle to save_txt (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 
-% Hint: get(hObject,'Value') returns toggle state of save_txt
 guidata(hObject, handles);
 
 curtoggle = get(hObject,'Value');
@@ -1023,54 +686,11 @@ end
 
 % Update handles structure
 guidata(hObject, handles);
-
-
-% --- Executes on button press in email_log.
-function email_log_Callback(hObject, eventdata, handles)
-% hObject    handle to email_log (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hint: get(hObject,'Value') returns toggle state of email_log
-
-
-% --- Executes on button press in batch_log.
-function batch_log_Callback(hObject, eventdata, handles)
-% hObject    handle to batch_log (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hint: get(hObject,'Value') returns toggle state of batch_log
-
-
-
-function edit13_Callback(hObject, eventdata, handles)
-% hObject    handle to choose_log (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of choose_log as text
-%        str2double(get(hObject,'String')) returns contents of choose_log as a double
-
-
-% --- Executes during object creation, after setting all properties.
-function choose_log_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to choose_log (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
+uiremember;
 
 
 % --- Executes on button press in choose_log.
 function choose_log_Callback(hObject, eventdata, handles)
-% hObject    handle to choose_log (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 
 guidata(hObject, handles);
 folder_name = uigetdir(pwd, 'Choose Location to store master log');
@@ -1078,31 +698,9 @@ set(handles.current_dir, 'String', folder_name);
 guidata(hObject, handles);
 
 
-% --- Executes during object creation, after setting all properties.
-function log_name_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to log_name (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-% --- Executes when figure1 is resized.
-function figure1_ResizeFcn(hObject, eventdata, handles)
-% hObject    handle to figure1 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
 
 % --- Executes on button press in old_log.
 function old_log_Callback(hObject, eventdata, handles)
-% hObject    handle to old_log (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 
 [FileName,PathName,FilterIndex] = uigetfile(fullfile(pwd, '*_log.mat'),'Select old batch log');
 
@@ -1138,86 +736,8 @@ set(handles.redo_done, 'Enable', 'on');
 guidata(hObject, handles);
 
 
-
-% --- Executes on button press in save_log.
-function save_log_Callback(hObject, eventdata, handles)
-% hObject    handle to save_log (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hint: get(hObject,'Value') returns toggle state of save_log
-
-
-% --- Executes on selection change in do_all.
-function do_all_Callback(hObject, eventdata, handles)
-% hObject    handle to do_all (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: contents = cellstr(get(hObject,'String')) returns do_all contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from do_all
-guidata(hObject, handles);
-
-
-% --- Executes during object creation, after setting all properties.
-function do_all_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to do_all (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: popupmenu controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-% --- Executes on slider movement.
-function slider5_Callback(hObject, eventdata, handles)
-% hObject    handle to slice_slider (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'Value') returns position of slider
-%        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
-
-
-% --- Executes during object creation, after setting all properties.
-function slider5_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to slice_slider (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: slider controls usually have a light gray background.
-if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor',[.9 .9 .9]);
-end
-
-
-% --------------------------------------------------------------------
-function fit_type_ButtonDownFcn(hObject, eventdata, handles)
-% hObject    handle to fit_type (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% disp('ButtonDow')
-
-
-% --- Executes on key press with focus on remove_files and none of its controls.
-function remove_files_KeyPressFcn(hObject, eventdata, handles)
-% hObject    handle to remove_files (see GCBO)
-% eventdata  structure with the following fields (see UICONTROL)
-%	Key: name of the key that was pressed, in lower case
-%	Character: character interpretation of the key(s) that was pressed
-%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
-% handles    structure with handles and user data (see GUIDATA)
-
-
 % --- Executes on button press in file_up.
 function file_up_Callback(hObject, eventdata, handles)
-% hObject    handle to file_up (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 
 % Update handles structure
 guidata(hObject, handles);
@@ -1265,9 +785,6 @@ guidata(hObject, handles);
 
 % --- Executes on button press in file_down.
 function file_down_Callback(hObject, eventdata, handles)
-% hObject    handle to file_down (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 
 % Update handles structure
 guidata(hObject, handles);
@@ -1309,62 +826,6 @@ end
 guidata(hObject, handles);
 
 
-% --- If Enable == 'on', executes on mouse press in 5 pixel border.
-% --- Otherwise, executes on mouse press in 5 pixel border or over file_up.
-function file_up_ButtonDownFcn(hObject, eventdata, handles)
-% hObject    handle to file_up (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-
-% --- If Enable == 'on', executes on mouse press in 5 pixel border.
-% --- Otherwise, executes on mouse press in 5 pixel border or over add_files.
-function add_files_ButtonDownFcn(hObject, eventdata, handles)
-% hObject    handle to add_files (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-
-% --- Executes on button press in redo_done.
-function redo_done_Callback(hObject, eventdata, handles)
-% hObject    handle to redo_done (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hint: get(hObject,'Value') returns toggle state of redo_done
-
-
-% --- Executes on selection change in file_format.
-function file_format_Callback(hObject, eventdata, handles)
-% hObject    handle to file_format (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: contents = cellstr(get(hObject,'String')) returns file_format contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from file_format
-
-
-% --- Executes during object creation, after setting all properties.
-function file_format_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to file_format (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: popupmenu controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-% --- If Enable == 'on', executes on mouse press in 5 pixel border.
-% --- Otherwise, executes on mouse press in 5 pixel border or over user_input.
-function user_input_ButtonDownFcn(hObject, eventdata, handles)
-% hObject    handle to user_input (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-
 % --- Executes on button press in run_estimate.
 function run_estimate_Callback(hObject, eventdata, handles)
 
@@ -1399,3 +860,268 @@ end
 
 % Update handles structure
 guidata(hObject, handles);
+
+
+% --- Executes on selection change in roi_box.
+function roi_box_Callback(hObject, eventdata, handles)
+
+
+% --- Executes during object creation, after setting all properties.
+function roi_box_CreateFcn(hObject, eventdata, handles)
+
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in add_roi.
+function add_roi_Callback(hObject, eventdata, handles)
+guidata(hObject, handles);
+
+[filename, pathname, filterindex] = uigetfile( ...
+    {  '*.nii','Nifti Files (*.nii)'; ...
+    '*.roi','ImageJ ROI Files (*.roi)'; ...
+    '*.hdr;*.img','Analyze Files (*.hdr, *.img)';...
+    '*.*',  'All Files (*.*)'}, ...
+    'Pick a file', ...
+    'MultiSelect', 'on'); %#ok<NASGU>
+if isequal(filename,0)
+    %disp('User selected Cancel')
+else
+    %disp(['User selected ', fullfile(pathname, filename)])
+    list = get(handles.roi_box,'String');
+    
+    % Combine path and filename together
+    fullpath = strcat(pathname,filename);
+    
+    % Stupid matlab uses a different datastructure if only one file
+    % is selected, handle special case
+    if ischar(list)
+        list = {list};
+    end
+    if ischar(filename)
+        filename = {filename};
+    end
+    if ischar(fullpath)
+        fullpath = {fullpath};
+    end
+
+    filename = filename';
+    fullpath = fullpath';
+    
+    % Add selected files to listbox
+    if strcmp(list,'No Files')
+        list = filename;
+        handles.roi_list = fullpath;
+    elseif isempty(list(1)) || isempty(list{1})
+        list = filename;
+        handles.roi_list = fullpath;
+    else
+        list = [list;  filename];
+        handles.roi_list = [handles.roi_list; fullpath];
+    end 
+    
+    set(handles.roi_box,'String',list, 'Value',1)
+end
+
+% Get Selected Dataset
+batch_selected = get(handles.batch_set,'Value');
+
+% Update handles structure
+handles = update_parameters(handles, batch_selected);
+
+guidata(hObject, handles);
+
+% --- Executes on button press in remove_roi.
+function remove_roi_Callback(hObject, eventdata, handles)
+index_selected = get(handles.roi_box,'Value');
+list = get(handles.roi_box,'String');
+if ~isempty(handles.roi_list)
+    for n=size(index_selected,2):-1:1
+        % Remove from end of list first so resizing does not 
+        % change subsequent index numbers
+        %disp(['User removed ', list{index_selected(n)}]);
+        list(index_selected(n)) = [];
+        handles.roi_list(index_selected(n)) = [];
+    end
+end
+
+set(handles.roi_box,'String',list, 'Value',1)
+% Get Selected Dataset
+batch_selected = get(handles.batch_set,'Value');
+
+% Update handles structure
+handles = update_parameters(handles, batch_selected);
+
+guidata(hObject, handles);
+
+% --- Executes on button press in fit_voxels.
+function fit_voxels_Callback(hObject, eventdata, handles)
+% Get Selected Dataset
+batch_selected = get(handles.batch_set,'Value');
+
+% Update handles structure
+handles = update_parameters(handles, batch_selected);
+
+guidata(hObject, handles);
+uiremember;
+
+% --- Executes during object creation, after setting all properties.
+function fit_voxels_CreateFcn(hObject, eventdata, handles)
+uirestore;
+
+
+% --- Executes on selection change in filename_box.
+function filename_box_Callback(hObject, eventdata, handles)
+
+
+% --- Executes during object creation, after setting all properties.
+function rsquared_threshold_CreateFcn(hObject, eventdata, handles)
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+uirestore;
+
+
+% --- Executes during object creation, after setting all properties.
+function slice_num_CreateFcn(hObject, eventdata, handles)
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes during object creation, after setting all properties.
+function r2slider_CreateFcn(hObject, eventdata, handles)
+
+if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor',[.9 .9 .9]);
+end
+
+
+% --- Executes during object creation, after setting all properties.
+function slice_slider_CreateFcn(hObject, eventdata, handles)
+
+if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor',[.9 .9 .9]);
+end
+
+% --- Executes during object creation, after setting all properties.
+function filename_box_CreateFcn(hObject, eventdata, handles)
+
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes during object creation, after setting all properties.
+function tr_CreateFcn(hObject, eventdata, handles)
+uirestore;
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes during object creation, after setting all properties.
+function output_basename_CreateFcn(hObject, eventdata, handles)
+
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on selection change in file_format.
+function file_format_Callback(hObject, eventdata, handles)
+uiremember;
+
+% --- Executes during object creation, after setting all properties.
+function file_format_CreateFcn(hObject, eventdata, handles)
+uirestore;
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes during object creation, after setting all properties.
+function batch_set_CreateFcn(hObject, eventdata, handles)
+uirestore;
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+function email_box_Callback(hObject, eventdata, handles)
+uiremember;
+
+% --- Executes during object creation, after setting all properties.
+function email_box_CreateFcn(hObject, eventdata, handles)
+uirestore;
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes during object creation, after setting all properties.
+function number_cpus_CreateFcn(hObject, eventdata, handles)
+uirestore;
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in neuroecon.
+function neuroecon_Callback(hObject, eventdata, handles)
+uiremember;
+
+% --- Executes during object creation, after setting all properties.
+function save_txt_CreateFcn(hObject, eventdata, handles)
+uirestore;
+
+% --- Executes on button press in save_log.
+function save_log_Callback(hObject, eventdata, handles)
+uiremember;
+
+% --- Executes during object creation, after setting all properties.
+function save_log_CreateFcn(hObject, eventdata, handles)
+uirestore;
+
+% --- Executes on button press in email_log.
+function email_log_Callback(hObject, eventdata, handles)
+uiremember;
+
+% --- Executes during object creation, after setting all properties.
+function email_log_CreateFcn(hObject, eventdata, handles)
+uirestore;
+
+% --- Executes on button press in batch_log.
+function batch_log_Callback(hObject, eventdata, handles)
+uiremember;
+
+% --- Executes during object creation, after setting all properties.
+function batch_log_CreateFcn(hObject, eventdata, handles)
+uirestore;
+
+% --- Executes on button press in redo_done.
+function redo_done_Callback(hObject, eventdata, handles)
+uiremember;
+
+% --- Executes during object creation, after setting all properties.
+function redo_done_CreateFcn(hObject, eventdata, handles)
+uirestore;
+
+% --- Executes on selection change in do_all.
+function do_all_Callback(hObject, eventdata, handles)
+uiremember;
+
+% --- Executes during object creation, after setting all properties.
+function do_all_CreateFcn(hObject, eventdata, handles)
+uirestore;
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+% --- Executes during object creation, after setting all properties.
+function odd_echoes_CreateFcn(hObject, eventdata, handles)
+uirestore;
+
+% --- Executes during object creation, after setting all properties.
+function neuroecon_CreateFcn(hObject, eventdata, handles)
+uirestore;

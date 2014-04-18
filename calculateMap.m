@@ -37,6 +37,8 @@ rsquared_threshold  = cur_dataset.rsquared;
 tr                  = cur_dataset.tr;
 data_order          = cur_dataset.data_order;
 output_basename     = cur_dataset.output_basename;
+roi_list            = cur_dataset.roi_list;
+fit_voxels          = cur_dataset.fit_voxels;
 
 % Add the location of the user input file if exists, else empty
 if strcmp(fit_type, 'user_input')
@@ -144,6 +146,13 @@ if submit
     disp(output_basename);
     disp('User selected only odd echoes: ');
     disp(odd_echoes);
+    disp('User selected fit all voxels: ');
+    disp(fit_voxels);
+    disp('User selected ROIs: ');
+    [nrows,ncols]= size(roi_list);
+    for row=1:nrows
+        disp(roi_list{row,:})
+    end
     if ~isempty(strfind(fit_type,'t1')) && ~isempty(strfind(fit_type,'fa'))
         disp('User selected tr: ');
         disp(tr);
@@ -286,187 +295,333 @@ for n=1:number_of_fits
         end
     end
     
-    % Run Fitting Algorithms
-    if(neuroecon)
-        %Schedule object, neuroecon
-        sched = findResource('scheduler', 'configuration', 'NeuroEcon.local');
-        set(sched, 'SubmitArguments', '-l walltime=12:00:00 -m abe -M thomasn@caltech.edu')
-        
-        warning off; %#ok<WNOFF>
-        
-        p = pwd;
-        %         n = '/home/thomasn/scripts/niftitools';
-        
-        job = createMatlabPoolJob(sched, 'configuration', 'NeuroEcon.local','PathDependencies', {p});
-        set(job, 'MaximumNumberOfWorkers', 20);
-        set(job, 'MinimumNumberOfWorkers', 1);
-        createTask(job, @parallelFit, 1,{parameter_list,fit_type,shaped_image,tr, submit, fit_file, ncoeffs, coeffs, tr_present,rsquared_threshold});
-        
-        submit(job);
-        waitForState(job)
-        results = getAllOutputArguments(job);
-        destroy(job);
-        
-        fit_output = cell2mat(results);
-    else
+    
+    % Perpare any ROIs
+    number_rois = 0;
+    if ~isempty(roi_list) && submit
+        %Sanitize list
+        for m=size(roi_list,1):-1:1
+            testfile=cell2mat(roi_list(m));
+            if ~exist(testfile, 'file')
+                % File does not exist.
+                warning( 'File does not exist' );
+                disp(testfile);
+                return;
+            end
+            for n=(m-1):-1:1
+                comparefile=roi_list(n);
+                if strcmp(testfile,comparefile)
+                    disp( 'Removing duplicates' );
+                    disp(comparefile);
+                    roi_list(m)=[];
+                end
+            end
+        end
+        number_rois = size(roi_list,1);
+        roi_name = [];
+        roi_ext = [];
+        %After sanitizing make sure we have some left
+        if number_rois~=0
+            [~, roi_name, roi_ext] = arrayfun(@(x) fileparts(x{:}), roi_list, 'UniformOutput', false);
+            
+            %Load ROI, find the selected voxels
+            for r=number_rois:-1:1
+                single_file=cell2mat(roi_list(r));
+                
+                if strcmp(roi_ext(r),'.nii') || strcmp(roi_ext(r),'.hdr') || strcmp(roi_ext(r),'.img')
+                    single_roi = load_nii(single_file);
+                    single_roi = double(single_roi.img);
+                    roi_index{r}= find(single_roi > 0);
+                elseif strcmp(roi_ext(r),'.roi')
+                    single_roi = ReadImageJROI(single_file);
+                    if strcmp(single_roi.strType,'Polygon') || strcmp(single_roi.strType,'Freehand')
+                        roi_image = poly2mask(...
+                            single_roi.mnCoordinates(:,2)+0.5,...
+                            single_roi.mnCoordinates(:,1)+0.5,...
+                            dim_x,dim_y);
+                        roi_index{r}= find(roi_image > 0);
+                        
+                    elseif strcmp(single_roi.strType,'Rectangle')
+                        roi_image = poly2mask(...
+                            [square.vnRectBounds(1:2:3) fliplr(square.vnRectBounds(1:2:3))]+0.5,...
+                            [square.vnRectBounds(2) square.vnRectBounds(2) square.vnRectBounds(4) square.vnRectBounds(4)]+0.5,...
+                            dim_x,dim_y);
+                        roi_index{r}= find(roi_image > 0);
+                    elseif strcmp(single_roi.strType,'Oval')
+                        center_x = (single_roi.vnRectBounds(3)+single_roi.vnRectBounds(1))/2+0.5;
+                        radius_x = (single_roi.vnRectBounds(3)-single_roi.vnRectBounds(1))/2;
+                        center_y = (single_roi.vnRectBounds(4)+single_roi.vnRectBounds(2))/2+0.5;
+                        radius_y = (single_roi.vnRectBounds(4)-single_roi.vnRectBounds(2))/2;
+                        
+                        alpha = linspace(0, 360, (radius_x+radius_y)*100)';
+                        sinalpha = sind(alpha);
+                        cosalpha = cosd(alpha);
+                        
+                        X = center_x + (radius_x * cosalpha);
+                        Y = center_y + (radius_y * sinalpha);
+                        
+                        roi_image = poly2mask(X,Y,dim_x,dim_y);
+                        
+                        roi_index{r}= find(roi_image > 0);
+                    else
+                        warning( 'ROI type not supported' );
+                        disp(single_roi.strType);
+                        return;
+                    end
+                    % If slice number is present, shift 2D position to
+                    % proper z position
+                    if isfield(single_roi,'nPosition')
+                        z_pos = single_roi.nPosition-1;
+                        roi_index{r} = roi_index{r} + z_pos*dim_x*dim_y;
+                    end
+                else
+                    warning( 'File type for ROI not supported' );
+                    disp(roi_ext(r));
+                    return;
+                end
+            end
+            
 
-        fit_output = parallelFit(parameter_list,fit_type,shaped_image,tr, submit, fit_file, ncoeffs, coeffs, tr_present,rsquared_threshold);
+%             original_timepoint = zeros(dim_x,dim_y,dim_z);
+            roi_series = zeros(number_rois,1,1,dim_n);
+            for t=1:dim_n
+                original_timepoint = shaped_image(:,:,:,t);
 
+                % 		original_timepoint(roi_index{r}) = 1e-4;
+                % 		imshow(original_timepoint.*20000);
+                %Average ROI voxels, insert into time series
+                for r=number_rois:-1:1
+                    roi_series(r,1,1,t) = mean(original_timepoint(roi_index{r}));
+                end
+            end
+            
+            %make backup
+            roi_series_original = roi_series;
+        end
     end
     
-    if strfind(fit_type, 'user_input')
-        
-        for i = 1:ncoeffs
-            eval([coeffs{i} '_fit = fit_output(:,' num2str(i) ');']);
-            
-            eval([coeffs{i} '_cilow = fit_output(:,' num2str(ncoeffs+i+1) ');']);
-            eval([coeffs{i} '_cihigh= fit_output(:,' num2str(ncoeffs+i+1) ');']);
-        end
-        
-        r_squared				 = fit_output(:,ncoeffs+1);
-
-        % Throw out bad results
-        ind = [];
-        for i = 1:ncoeffs
-            ind = [ind, eval(['find(' coeffs{i} '_fit ~= -2);'])];
-            ind = unique(ind);
-        end
-        
-        indr = find(r_squared < rsquared_threshold);
-        
-        indbad = intersect(indr, ind);
-        
-        for i = 1:ncoeffs
-            eval([coeffs{i} '_fit(indbad) = -1;']);
-            eval([coeffs{i} '_fit = reshape(' coeffs{i} '_fit, [dim_x, dim_y, dim_z]);']);
-            
-            eval([coeffs{i} '_cilow(indbad) = -1;']);
-            eval([coeffs{i} '_cilow = reshape(' coeffs{i} '_cilow, [dim_x, dim_y, dim_z]);']);
-            
-            eval([coeffs{i} '_cihigh(indbad) = -1;']);
-            eval([coeffs{i} '_cihigh = reshape(' coeffs{i} '_cihigh, [dim_x, dim_y, dim_z]);']);
-        end
-       
-        r_squared				= reshape(r_squared, [dim_x, dim_y, dim_z]);
-        
-    else
-        % Collect and reshape outputs
-        exponential_fit			 = fit_output(:,1);
-        rho_fit					 = fit_output(:,2);
-        r_squared				 = fit_output(:,3);
-        confidence_interval_low	 = fit_output(:,4);
-        confidence_interval_high = fit_output(:,5);
-        
-        % Throw out bad results
-        indr = find(r_squared < rsquared_threshold);
-        inde = find(exponential_fit ~=-2);
-        m    =intersect(indr,inde);
-        
-        rho_fit(m) = -1;
-        exponential_fit(m) = -1;
-        confidence_interval_low(m) = -1;
-        confidence_interval_high(m) = -1;
-        
-        
-        %         for m=1:size(exponential_fit)
-        %             if(r_squared(m) < rsquared_threshold && exponential_fit(m)~=-2)
-        %                 rho_fit(m) = -1;
-        %                 exponential_fit(m) = -1;
-        %                 confidence_interval_low(m) = -1;
-        %                 confidence_interval_high(m) = -1;
-        %             end
-        %         end
-
-        exponential_fit			= reshape(exponential_fit, [dim_x, dim_y, dim_z]);
-        rho_fit					= reshape(rho_fit,  [dim_x, dim_y, dim_z]); %#ok<NASGU>
-        r_squared				= reshape(r_squared, [dim_x, dim_y, dim_z]);
-        confidence_interval_low  = reshape(confidence_interval_low, [dim_x, dim_y, dim_z]);
-        confidence_interval_high = reshape(confidence_interval_high, [dim_x, dim_y, dim_z]);
+    if ~fit_voxels && number_rois==0
+        disp('nothing to fit, select an ROI file or check "fit voxels"');
+        return;
     end
     
-    if submit
-        
-        %             for i = 1:ncoeffs
-        %             eval([coeffs{i} '_fit(indbad) = -1;']);
-        %             eval([coeffs{i} '_fit = reshape(' coeffs{i} '_fit, [dim_x, dim_y, dim_z]);']);
-        %
-        %         end
-        if strfind(fit_type, 'user_input')
-            % Create output names
-            
+    
+    % Run Fitting Algorithms Voxels
+    if(fit_voxels)
+        if(neuroecon)
+            %Schedule object, neuroecon
+            sched = findResource('scheduler', 'configuration', 'NeuroEcon.local');
+            set(sched, 'SubmitArguments', '-l walltime=12:00:00 -m abe -M thomasn@caltech.edu')
+
+            warning off; %#ok<WNOFF>
+
+            p = pwd;
+            %         n = '/home/thomasn/scripts/niftitools';
+
+            job = createMatlabPoolJob(sched, 'configuration', 'NeuroEcon.local','PathDependencies', {p});
+            set(job, 'MaximumNumberOfWorkers', 20);
+            set(job, 'MinimumNumberOfWorkers', 1);
+            createTask(job, @parallelFit, 1,{parameter_list,fit_type,shaped_image,tr, submit, fit_file, ncoeffs, coeffs, tr_present,rsquared_threshold});
+
+            submit(job);
+            waitForState(job)
+            results = getAllOutputArguments(job);
+            destroy(job);
+
+            fit_output = cell2mat(results);
+        else
+            fit_output = parallelFit(parameter_list,fit_type,shaped_image,tr, submit, fit_file, ncoeffs, coeffs, tr_present,rsquared_threshold);
+        end
+    end
+    
+    % Run Fitting Algorithms ROIs
+    if(number_rois)
+        % Run
+        if(neuroecon)
+            %Schedule object, neuroecon
+            sched = findResource('scheduler', 'configuration', 'NeuroEcon.local');
+            set(sched, 'SubmitArguments', '-l walltime=12:00:00 -m abe -M thomasn@caltech.edu')
+
+            warning off; %#ok<WNOFF>
+
+            p = pwd;
+            %         n = '/home/thomasn/scripts/niftitools';
+
+            job = createMatlabPoolJob(sched, 'configuration', 'NeuroEcon.local','PathDependencies', {p});
+            set(job, 'MaximumNumberOfWorkers', 20);
+            set(job, 'MinimumNumberOfWorkers', 1);
+            createTask(job, @parallelFit, 1,{parameter_list,fit_type,roi_series,tr, submit, fit_file, ncoeffs, coeffs, tr_present,rsquared_threshold});
+
+            submit(job);
+            waitForState(job)
+            results = getAllOutputArguments(job);
+            destroy(job);
+
+            roi_output = cell2mat(results);
+        else
+            roi_output = parallelFit(parameter_list,fit_type,roi_series,tr, submit, fit_file, ncoeffs, coeffs, tr_present,rsquared_threshold);
+        end
+    end
+    
+    if fit_voxels
+        if strfind(fit_type, 'user_input') 
             for i = 1:ncoeffs
-                fullpathT2{i} = fullfile(file_path, [output_basename, '_', coeffs{i},'_', filename ...
+                eval([coeffs{i} '_fit = fit_output(:,' num2str(i) ');']);
+                eval([coeffs{i} '_cilow = fit_output(:,' num2str(ncoeffs+i+1) ');']);
+                eval([coeffs{i} '_cihigh= fit_output(:,' num2str(ncoeffs+i+1) ');']);
+            end
+
+            r_squared				 = fit_output(:,ncoeffs+1);
+
+            % Throw out bad results
+            ind = [];
+            for i = 1:ncoeffs
+                ind = [ind, eval(['find(' coeffs{i} '_fit ~= -2);'])];
+                ind = unique(ind);
+            end
+
+            indr = find(r_squared < rsquared_threshold);
+
+            indbad = intersect(indr, ind);
+
+            for i = 1:ncoeffs
+                eval([coeffs{i} '_fit(indbad) = -1;']);
+                eval([coeffs{i} '_fit = reshape(' coeffs{i} '_fit, [dim_x, dim_y, dim_z]);']);
+
+                eval([coeffs{i} '_cilow(indbad) = -1;']);
+                eval([coeffs{i} '_cilow = reshape(' coeffs{i} '_cilow, [dim_x, dim_y, dim_z]);']);
+
+                eval([coeffs{i} '_cihigh(indbad) = -1;']);
+                eval([coeffs{i} '_cihigh = reshape(' coeffs{i} '_cihigh, [dim_x, dim_y, dim_z]);']);
+            end
+
+            r_squared				= reshape(r_squared, [dim_x, dim_y, dim_z]);
+
+        else
+            % Collect and reshape outputs
+            exponential_fit			 = fit_output(:,1);
+            rho_fit					 = fit_output(:,2);
+            r_squared				 = fit_output(:,3);
+            confidence_interval_low	 = fit_output(:,4);
+            confidence_interval_high = fit_output(:,5);
+
+            % Throw out bad results
+            indr = find(r_squared < rsquared_threshold);
+            inde = find(exponential_fit ~=-2);
+            m    =intersect(indr,inde);
+
+            rho_fit(m) = -1;
+            exponential_fit(m) = -1;
+            confidence_interval_low(m) = -1;
+            confidence_interval_high(m) = -1;
+
+            exponential_fit			= reshape(exponential_fit, [dim_x, dim_y, dim_z]);
+            rho_fit					= reshape(rho_fit,  [dim_x, dim_y, dim_z]); %#ok<NASGU>
+            r_squared				= reshape(r_squared, [dim_x, dim_y, dim_z]);
+            confidence_interval_low  = reshape(confidence_interval_low, [dim_x, dim_y, dim_z]);
+            confidence_interval_high = reshape(confidence_interval_high, [dim_x, dim_y, dim_z]);
+        end
+
+        if submit
+            if strfind(fit_type, 'user_input')
+                % Create output names
+                for i = 1:ncoeffs
+                    fullpathT2{i} = fullfile(file_path, [output_basename, '_', coeffs{i},'_', filename ...
+                        ,'.nii']);
+                    fullpathCILow{i}   = fullfile(file_path, ['CI_low_', coeffs{i},'_', filename ...
+                        , '.nii']);
+                    fullpathCIHigh{i}   = fullfile(file_path, ['CI_high_', coeffs{i},'_', filename ...
+                        , '.nii']);
+                end
+                fullpathRsquared   = fullfile(file_path, ['Rsquared_', fit_type,'_', filename ...
+                    , '.nii']);
+
+                % Write output
+                for i = 1:ncoeffs
+                    eval(['T2dirnii(' num2str(i) ').nii = make_nii(' coeffs{i} '_fit, res, [1 1 1], [], output_basename);']);
+                    eval(['save_nii(T2dirnii(' num2str(i) ').nii, fullpathT2{' num2str(i) '});']);
+
+                    eval(['CILOWdirnii(' num2str(i) ').nii = make_nii(' coeffs{i} '_cilow, res, [1 1 1], [], output_basename);']);
+                    eval(['save_nii(CILOWdirnii(' num2str(i) ').nii, fullpathCILow{' num2str(i) '});']);
+
+                    eval(['CIHIGHdirnii(' num2str(i) ').nii = make_nii(' coeffs{i} '_cihigh, res, [1 1 1], [], output_basename);']);
+                    eval(['save_nii(CIHIGHdirnii(' num2str(i) ').nii, fullpathCIHigh{' num2str(i) '});']);
+                end
+
+                Rsquareddirnii   = make_nii(r_squared, res, [1 1 1], [], 'R Squared of fit');
+                save_nii(Rsquareddirnii, fullpathRsquared);
+
+            else
+                % Create output names
+                fullpathT2 = fullfile(file_path, [output_basename, '_', fit_type,'_', filename ...
                     ,'.nii']);
-                
-                fullpathCILow{i}   = fullfile(file_path, ['CI_low_', coeffs{i},'_', filename ...
+                fullpathRsquared   = fullfile(file_path, ['Rsquared_', fit_type,'_', filename ...
                     , '.nii']);
-                fullpathCIHigh{i}   = fullfile(file_path, ['CI_high_', coeffs{i},'_', filename ...
+                fullpathCILow   = fullfile(file_path, ['CI_low_', fit_type,'_', filename ...
                     , '.nii']);
+                fullpathCIHigh   = fullfile(file_path, ['CI_high_', fit_type,'_', filename ...
+                    , '.nii']);
+
+                % Write output
+                T2dirnii = make_nii(exponential_fit, res, [1 1 1], [], fit_type);
+                Rsquareddirnii   = make_nii(r_squared, res, [1 1 1], [], 'R Squared of fit');
+                save_nii(T2dirnii, fullpathT2);
+                save_nii(Rsquareddirnii, fullpathRsquared);
+                % Linear_fast does not calculate confidence intervals
+                if ~strcmp(fit_type,'t2_linear_fast') && ~strcmp(fit_type,'t1_fa_linear_fit')
+                    CILowdirnii  = make_nii(confidence_interval_low, res, [1 1 1], [], 'Low 95% confidence interval');
+                    CIHighdirnii  = make_nii(confidence_interval_high, res, [1 1 1], [], 'High 95% confidence interval');
+                    save_nii(CILowdirnii, fullpathCILow);
+                    save_nii(CIHighdirnii, fullpathCIHigh);
+                end
             end
-            fullpathRsquared   = fullfile(file_path, ['Rsquared_', fit_type,'_', filename ...
-                , '.nii']);
-            
-            
-            % Write output
-            for i = 1:ncoeffs
-                
-                eval(['T2dirnii(' num2str(i) ').nii = make_nii(' coeffs{i} '_fit, res, [1 1 1], [], output_basename);']);
-                eval(['save_nii(T2dirnii(' num2str(i) ').nii, fullpathT2{' num2str(i) '});']);
-                
-                eval(['CILOWdirnii(' num2str(i) ').nii = make_nii(' coeffs{i} '_cilow, res, [1 1 1], [], output_basename);']);
-                eval(['save_nii(CILOWdirnii(' num2str(i) ').nii, fullpathCILow{' num2str(i) '});']);
-                
-                 eval(['CIHIGHdirnii(' num2str(i) ').nii = make_nii(' coeffs{i} '_cihigh, res, [1 1 1], [], output_basename);']);
-                eval(['save_nii(CIHIGHdirnii(' num2str(i) ').nii, fullpathCIHigh{' num2str(i) '});']);
+
+            execution_time(n) = toc;
+
+            disp(['Map completed at ', datestr(now,'mmmm dd, yyyy HH:MM:SS')])
+            disp(['Execution time was: ',datestr(datenum(0,0,0,0,0,execution_time(n)),'HH:MM:SS')]);
+            disp('Map saved to: ');
+            if iscell(fullpathT2)
+                for i = 1:numel(fullpathT2)
+                    disp(fullpathT2{i});
+                end
+            else
+                disp(fullpathT2);
             end
-            
-            Rsquareddirnii   = make_nii(r_squared, res, [1 1 1], [], 'R Squared of fit');
-            save_nii(Rsquareddirnii, fullpathRsquared);
-           
+
+            %    number_cps, neuroecon, batch_log, log_name, cur_dataset, submit
+
+            single_IMG = 1;
         else
-            % Create output names
-            fullpathT2 = fullfile(file_path, [output_basename, '_', fit_type,'_', filename ...
-                ,'.nii']);
-            fullpathRsquared   = fullfile(file_path, ['Rsquared_', fit_type,'_', filename ...
-                , '.nii']);
-            fullpathCILow   = fullfile(file_path, ['CI_low_', fit_type,'_', filename ...
-                , '.nii']);
-            fullpathCIHigh   = fullfile(file_path, ['CI_high_', fit_type,'_', filename ...
-                , '.nii']);
-            
-            % Write output
-            T2dirnii = make_nii(exponential_fit, res, [1 1 1], [], fit_type);
-            Rsquareddirnii   = make_nii(r_squared, res, [1 1 1], [], 'R Squared of fit');
-            save_nii(T2dirnii, fullpathT2);
-            save_nii(Rsquareddirnii, fullpathRsquared);
-            % Linear_fast does not calculate confidence intervals
-            if ~strcmp(fit_type,'t2_linear_fast') && ~strcmp(fit_type,'t1_fa_linear_fit')
-                CILowdirnii  = make_nii(confidence_interval_low, res, [1 1 1], [], 'Low 95% confidence interval');
-                CIHighdirnii  = make_nii(confidence_interval_high, res, [1 1 1], [], 'High 95% confidence interval');
-                save_nii(CILowdirnii, fullpathCILow);
-                save_nii(CIHighdirnii, fullpathCIHigh);
-            end
+            % Process R2 map for quick visualization
+            single_IMG = r_squared;
         end
-        
-        execution_time(n) = toc;
-        
-        disp(['Map completed at ', datestr(now,'mmmm dd, yyyy HH:MM:SS')])
-        disp(['Execution time was: ',datestr(datenum(0,0,0,0,0,execution_time(n)),'HH:MM:SS')]);
-        disp('Map saved to: ');
-        if iscell(fullpathT2)
-            for i = 1:numel(fullpathT2)
-                disp(fullpathT2{i});
-            end
-        else
-            disp(fullpathT2);
-        end
-        
-        %    number_cps, neuroecon, batch_log, log_name, cur_dataset, submit
-        
-        single_IMG = 1;
-    else
-        % Process R2 map for quick visualization
-        single_IMG = r_squared;
+    end
+    if number_rois
+%         exponential_fit			 = roi_output(:,1);
+%         rho_fit					 = roi_output(:,2);
+%         r_squared				 = roi_output(:,3);
+%         confidence_interval_low	 = roi_output(:,4);
+%         confidence_interval_high = roi_output(:,5);
+% 
+%         % Throw out bad results
+%         indr = find(r_squared < rsquared_threshold);
+%         inde = find(exponential_fit ~=-2);
+%         m    =intersect(indr,inde);
+% 
+%         rho_fit(m) = -1;
+%         exponential_fit(m) = -1;
+%         confidence_interval_low(m) = -1;
+%         confidence_interval_high(m) = -1;
+
+        headings = {'ROI path', 'ROI', fit_type, 'rho', 'r squared', '95% CI low', '95% CI high'};
+        xls_results = [roi_list roi_name mat2cell(roi_output,ones(1,size(roi_results,1)),ones(1,size(roi_results,2)))];
+        xls_results = [headings; xls_results];
+        xls_path = fullfile(file_path, [output_basename, '_', fit_type,'_', filename,'.xls']);
+        xlswrite(xls_path,xls_results);
+
+        disp('ROI saved to: ');
+        disp(xls_path);
     end
 end
 
