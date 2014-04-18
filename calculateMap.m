@@ -576,10 +576,7 @@ for n=1:number_of_fits
                 end
             end
 
-            execution_time(n) = toc;
-
             disp(['Map completed at ', datestr(now,'mmmm dd, yyyy HH:MM:SS')])
-            disp(['Execution time was: ',datestr(datenum(0,0,0,0,0,execution_time(n)),'HH:MM:SS')]);
             disp('Map saved to: ');
             if iscell(fullpathT2)
                 for i = 1:numel(fullpathT2)
@@ -588,8 +585,6 @@ for n=1:number_of_fits
             else
                 disp(fullpathT2);
             end
-
-            %    number_cps, neuroecon, batch_log, log_name, cur_dataset, submit
 
             single_IMG = 1;
         else
@@ -614,14 +609,20 @@ for n=1:number_of_fits
 %         confidence_interval_low(m) = -1;
 %         confidence_interval_high(m) = -1;
 
-        headings = {'ROI path', 'ROI', fit_type, 'rho', 'r squared', '95% CI low', '95% CI high'};
-        xls_results = [roi_list roi_name mat2cell(roi_output,ones(1,size(roi_results,1)),ones(1,size(roi_results,2)))];
+        headings = {'ROI path', 'ROI', fit_type, 'rho', 'r squared', '95% CI low', '95% CI high', 'Sum Squared Error'};
+        xls_results = [roi_list roi_name mat2cell(roi_output,ones(1,size(roi_output,1)),ones(1,size(roi_output,2)))];
         xls_results = [headings; xls_results];
         xls_path = fullfile(file_path, [output_basename, '_', fit_type,'_', filename,'.xls']);
         xlswrite(xls_path,xls_results);
 
         disp('ROI saved to: ');
         disp(xls_path);
+        single_IMG = 1;
+    end
+    
+    if submit
+        execution_time(n) = toc;
+        disp(['Execution time was: ',datestr(datenum(0,0,0,0,0,execution_time(n)),'HH:MM:SS')]);
     end
 end
 
@@ -638,41 +639,54 @@ if submit
     % The map was calculated correctly, so we note this in the data structure
     cur_dataset.to_do = 0;
     JOB_struct(1).batch_data = cur_dataset;
-end
-
-
-% Save text and data structure logs if desired.
-if submit
-    % Create data structures for curve fit analysis
-    fit_data.fit_voxels = logical(numel(shaped_image));
-    fit_data.fitting_results = fit_output;
-    fit_data.model_name = fit_type;
-    fit_data.number_rois = 0;
-    fit_data.fit_file = fit_file;
-    fit_data.ncoeffs = ncoeffs;
-    fit_data.coeffs = coeffs;
-    xdata{1}.x_values = parameter_list;
-    xdata{1}.y_values = shaped_image;
-    xdata{1}.tr = tr;
-    xdata{1}.dimensions = [dim_x, dim_y, dim_z];
-    xdata{1}.numvoxels = numel(fit_output);
-    if strfind(fit_type,'ADC')
-    	xdata{1}.x_units = 'b-value';
-    elseif strfind(fit_type,'fa')
-        xdata{1}.x_units = 'FA (degrees)';
-    elseif strcmp(fit_type,'user_input')
-        xdata{1}.x_units = 'a.u.';
-    else
-        xdata{1}.x_units = 'ms';
-    end
-    xdata{1}.y_units = 'a.u.';
+    % Save text and data structure logs if desired.
     
-    log_name = strrep(fullpathT2, '.nii', '.mat');
     
-    if save_log
-        save(log_name, 'JOB_struct','fit_data','xdata', '-mat');
-        disp(['Saved log at: ' log_name]);
+    if fit_voxels
+        % Create data structures for curve fit analysis
+        fit_data.fit_voxels = logical(numel(shaped_image));
+        fit_data.fitting_results = fit_output;
+        fit_data.model_name = fit_type;
+        fit_data.number_rois = 0;
+        fit_data.fit_file = fit_file;
+        fit_data.ncoeffs = ncoeffs;
+        fit_data.coeffs = coeffs;
+        xdata{1}.x_values = parameter_list;
+        xdata{1}.y_values = shaped_image;
+        xdata{1}.tr = tr;
+        xdata{1}.dimensions = [dim_x, dim_y, dim_z];
+        xdata{1}.numvoxels = numel(fit_output);
+        if strfind(fit_type,'ADC')
+            xdata{1}.x_units = 'b-value';
+        elseif strfind(fit_type,'fa')
+            xdata{1}.x_units = 'FA (degrees)';
+        elseif strcmp(fit_type,'user_input')
+            xdata{1}.x_units = 'a.u.';
+        else
+            xdata{1}.x_units = 'ms';
+        end
+        xdata{1}.y_units = 'a.u.';
+        
+        log_name = strrep(fullpathT2, '.nii', '.mat');
+        
+        if save_log
+            save(log_name, 'JOB_struct','fit_data','xdata', '-mat');
+            disp(['Saved log at: ' log_name]);
+        end
     end
+    if number_rois
+        if ~exist('log_name','var')
+            log_name = strrep(xls_path, '.xls', '.mat');
+        end
+        
+        if save_log
+%             save(log_name, 'JOB_struct', '-mat','-append');
+%             disp(['Saved log at: ' log_name]);
+        end
+    end
+    
+    
+    
 end
 
 if submit
