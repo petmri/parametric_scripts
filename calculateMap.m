@@ -370,9 +370,11 @@ for n=1:number_of_fits
                     end
                     % If slice number is present, shift 2D position to
                     % proper z position
-                    if isfield(single_roi,'nPosition')
+                    if isfield(single_roi,'nPosition') && single_roi.nPosition~=0
                         z_pos = single_roi.nPosition-1;
                         roi_index{r} = roi_index{r} + z_pos*dim_x*dim_y;
+                    else
+                        error( 'Could not find Z position in ROI file, use latest ImageJ verion, all ROIs will be on first slice!' );
                     end
                 else
                     warning( 'File type for ROI not supported' );
@@ -387,13 +389,16 @@ for n=1:number_of_fits
             for t=1:dim_n
                 original_timepoint = shaped_image(:,:,:,t);
 
-                % 		original_timepoint(roi_index{r}) = 1e-4;
-                % 		imshow(original_timepoint.*20000);
                 %Average ROI voxels, insert into time series
                 for r=number_rois:-1:1
                     roi_series(r,1,1,t) = mean(original_timepoint(roi_index{r}));
+                    
+%                     original_timepoint(roi_index{r}) = max(max(max(original_timepoint)));
                 end
             end
+            
+%             figure
+%             imshow3D(original_timepoint, []);
             
             %make backup
             roi_series_original = roi_series;
@@ -593,22 +598,6 @@ for n=1:number_of_fits
         end
     end
     if number_rois
-%         exponential_fit			 = roi_output(:,1);
-%         rho_fit					 = roi_output(:,2);
-%         r_squared				 = roi_output(:,3);
-%         confidence_interval_low	 = roi_output(:,4);
-%         confidence_interval_high = roi_output(:,5);
-% 
-%         % Throw out bad results
-%         indr = find(r_squared < rsquared_threshold);
-%         inde = find(exponential_fit ~=-2);
-%         m    =intersect(indr,inde);
-% 
-%         rho_fit(m) = -1;
-%         exponential_fit(m) = -1;
-%         confidence_interval_low(m) = -1;
-%         confidence_interval_high(m) = -1;
-
         headings = {'ROI path', 'ROI', fit_type, 'rho', 'r squared', '95% CI low', '95% CI high', 'Sum Squared Error'};
         xls_results = [roi_list roi_name mat2cell(roi_output,ones(1,size(roi_output,1)),ones(1,size(roi_output,2)))];
         xls_results = [headings; xls_results];
@@ -639,50 +628,54 @@ if submit
     % The map was calculated correctly, so we note this in the data structure
     cur_dataset.to_do = 0;
     JOB_struct(1).batch_data = cur_dataset;
-    % Save text and data structure logs if desired.
     
     
+    % Create data structures for curve fit analysis
+    fit_data.model_name = fit_type;
+    fit_data.fit_file = fit_file;
+    fit_data.ncoeffs = ncoeffs;
+    fit_data.coeffs = coeffs;
+    fit_data.number_rois = number_rois;
+    fit_data.fit_voxels = 0; %Reset below if fit_voxels
+    xdata{1}.tr = tr;
+    xdata{1}.dimensions = [dim_x, dim_y, dim_z];
+    xdata{1}.numvoxels = 0; %Reset below if fit_voxels
+    xdata{1}.x_values = parameter_list;
+    if strfind(fit_type,'ADC')
+        xdata{1}.x_units = 'b-value';
+    elseif strfind(fit_type,'fa')
+        xdata{1}.x_units = 'FA (degrees)';
+    elseif strcmp(fit_type,'user_input')
+        xdata{1}.x_units = 'a.u.';
+    else
+        xdata{1}.x_units = 'ms';
+    end
+    xdata{1}.y_units = 'a.u.';    
     if fit_voxels
-        % Create data structures for curve fit analysis
         fit_data.fit_voxels = logical(numel(shaped_image));
         fit_data.fitting_results = fit_output;
-        fit_data.model_name = fit_type;
-        fit_data.number_rois = 0;
-        fit_data.fit_file = fit_file;
-        fit_data.ncoeffs = ncoeffs;
-        fit_data.coeffs = coeffs;
-        xdata{1}.x_values = parameter_list;
+        
         xdata{1}.y_values = shaped_image;
-        xdata{1}.tr = tr;
-        xdata{1}.dimensions = [dim_x, dim_y, dim_z];
         xdata{1}.numvoxels = numel(fit_output);
-        if strfind(fit_type,'ADC')
-            xdata{1}.x_units = 'b-value';
-        elseif strfind(fit_type,'fa')
-            xdata{1}.x_units = 'FA (degrees)';
-        elseif strcmp(fit_type,'user_input')
-            xdata{1}.x_units = 'a.u.';
-        else
-            xdata{1}.x_units = 'ms';
-        end
-        xdata{1}.y_units = 'a.u.';
         
-        log_name = strrep(fullpathT2, '.nii', '.mat');
-        
-        if save_log
-            save(log_name, 'JOB_struct','fit_data','xdata', '-mat');
-            disp(['Saved log at: ' log_name]);
-        end
+        local_log_name = strrep(fullpathT2, '.nii', '.mat');
     end
     if number_rois
-        if ~exist('log_name','var')
-            log_name = strrep(xls_path, '.xls', '.mat');
-        end
+        fit_data.roi_results = roi_output;
+%         fit_data.roi_residuals = roi_residuals;
+        fit_data.roi_name = roi_name;
         
-        if save_log
-%             save(log_name, 'JOB_struct', '-mat','-append');
-%             disp(['Saved log at: ' log_name]);
+        xdata{1}.roi_y_values = roi_series;
+        
+        if ~exist('local_log_name','var')
+            local_log_name = strrep(xls_path, '.xls', '.mat');
         end
+    end
+    
+    % Save text and data structure logs if desired.
+    if save_log
+        save(local_log_name, 'JOB_struct','fit_data','xdata', '-mat');
+        disp(['Saved log at: ' local_log_name]);
     end
     
     
