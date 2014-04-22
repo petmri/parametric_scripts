@@ -642,11 +642,15 @@ if submit
     xdata{1}.numvoxels = 0; %Reset below if fit_voxels
     xdata{1}.x_values = parameter_list;
     if strfind(fit_type,'ADC')
-        xdata{1}.x_units = 'b-value';
+        xdata{1}.x_units = 'b-value (s/mm^2)';
     elseif strfind(fit_type,'fa')
         xdata{1}.x_units = 'FA (degrees)';
     elseif strcmp(fit_type,'user_input')
         xdata{1}.x_units = 'a.u.';
+    elseif strfind(fit_type,'t1')
+        xdata{1}.x_units = 'TR (ms)';
+    elseif strfind(fit_type,'t2')
+        xdata{1}.x_units = 'TE (ms)';
     else
         xdata{1}.x_units = 'ms';
     end
