@@ -270,6 +270,14 @@ function ok_button_Callback(hObject, eventdata, handles) %#ok<*INUSL>
 
 disp('User selected Submit Jobs')
 
+[errormsg] = quick_check(handles);
+handles = disp_error(errormsg, handles);
+if ~isempty(errormsg)
+    disp('Error');
+    disp(errormsg);
+    return
+end
+
 % If do_all toggled, set to_do for all file_list to 1
 if get(handles.do_all, 'Value')
     file_list = handles.batch_data;
@@ -278,10 +286,6 @@ if get(handles.do_all, 'Value')
     end
     handles.batch_data = file_list;
 end
-
-
-[errormsg] = quick_check(handles);
-handles = disp_error(errormsg, handles);
 
 % Reset to_do toggle if needed.
 if get(handles.redo_done, 'Value')
@@ -913,7 +917,7 @@ else
     if strcmp(list,'No Files')
         list = filename;
         handles.roi_list = fullpath;
-    elseif isempty(list(1)) || isempty(list{1})
+    elseif isempty(list) || isempty(list(1)) || isempty(list{1})
         list = filename;
         handles.roi_list = fullpath;
     else

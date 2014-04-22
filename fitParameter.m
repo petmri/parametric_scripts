@@ -98,8 +98,8 @@ if r_squared>=rsquared_threshold
         r_squared = gof.rsquare;
         confidence_interval = confint(cf_,0.95);
         rho_fit = cf_.a;
-        exponential_fit   = -1/cf_.b;
-        exponential_95_ci = -1./confidence_interval(:,2);
+        exponential_fit   = -1*cf_.b;
+        exponential_95_ci = -1*confidence_interval(:,2);
     elseif(strcmp(fit_type,'ADC_linear_weighted'))
         % Restrict fits for ADC from 0 to Inf, and coefficient ('rho') from
         % 0 to inf
@@ -116,8 +116,8 @@ if r_squared>=rsquared_threshold
         r_squared = gof.rsquare;
         confidence_interval = confint(cf_,0.95);
         rho_fit = cf_.p2;
-        exponential_fit   = -1/cf_.p1;
-        exponential_95_ci = -1./confidence_interval(:,1);
+        exponential_fit   = -1*cf_.p1;
+        exponential_95_ci = -1*confidence_interval(:,1);
         
     elseif(strcmp(fit_type,'t2_linear_weighted'))
         % Restrict fits for T2 from 1ms to 2500ms, and coefficient ('rho') from
@@ -169,8 +169,8 @@ if r_squared>=rsquared_threshold
         r_squared = gof.rsquare;
         confidence_interval = confint(cf_,0.95);
         rho_fit = cf_.p2;
-        exponential_fit   = -1/cf_.p1;
-        exponential_95_ci = -1./confidence_interval(:,1);
+        exponential_fit   = -1*cf_.p1;
+        exponential_95_ci = -1*confidence_interval(:,1);
     elseif(strcmp(fit_type,'t2_linear_fast'))
         ln_si = log(si);
         
@@ -210,7 +210,7 @@ if r_squared>=rsquared_threshold
             r_squared = 0;
         end
         % Save Results
-        exponential_fit = -1/slope;
+        exponential_fit = -1*slope;
         rho_fit = intercept;
         % Confidence intervals not calculated
         exponential_95_ci(1) = -1;

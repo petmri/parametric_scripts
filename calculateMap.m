@@ -2,7 +2,7 @@
 function [single_IMG, errormsg, JOB_struct, txtlog_output_path] = calculateMap(JOB_struct, dataset)
 
 % Initialize empty variables
-single_IMG = '';
+single_IMG = 0;
 errormsg   = '';
 txtlog_output_path   = '';
 
@@ -343,8 +343,8 @@ for n=1:number_of_fits
                         
                     elseif strcmp(single_roi.strType,'Rectangle')
                         roi_image = poly2mask(...
-                            [square.vnRectBounds(1:2:3) fliplr(square.vnRectBounds(1:2:3))]+0.5,...
-                            [square.vnRectBounds(2) square.vnRectBounds(2) square.vnRectBounds(4) square.vnRectBounds(4)]+0.5,...
+                            [single_roi.vnRectBounds(1:2:3) fliplr(single_roi.vnRectBounds(1:2:3))]+0.5,...
+                            [single_roi.vnRectBounds(2) single_roi.vnRectBounds(2) single_roi.vnRectBounds(4) single_roi.vnRectBounds(4)]+0.5,...
                             dim_x,dim_y);
                         roi_index{r}= find(roi_image > 0);
                     elseif strcmp(single_roi.strType,'Oval')
@@ -374,7 +374,7 @@ for n=1:number_of_fits
                         z_pos = single_roi.nPosition-1;
                         roi_index{r} = roi_index{r} + z_pos*dim_x*dim_y;
                     else
-                        error( 'Could not find Z position in ROI file, use latest ImageJ verion, all ROIs will be on first slice!' );
+                        error( 'Could not find Z position in ROI file, use latest ImageJ verion' );
                     end
                 else
                     warning( 'File type for ROI not supported' );
