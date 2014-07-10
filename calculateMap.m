@@ -370,7 +370,10 @@ for n=1:number_of_fits
                     end
                     % If slice number is present, shift 2D position to
                     % proper z position
-                    if isfield(single_roi,'nPosition') && single_roi.nPosition~=0
+                    if isfield(single_roi,'nPosition')
+                        if single_roi.nPosition==0
+                            single_roi.nPosition = 1;
+                        end
                         z_pos = single_roi.nPosition-1;
                         roi_index{r} = roi_index{r} + z_pos*dim_x*dim_y;
                     else
