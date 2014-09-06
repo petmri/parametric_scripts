@@ -39,6 +39,7 @@ data_order          = cur_dataset.data_order;
 output_basename     = cur_dataset.output_basename;
 roi_list            = cur_dataset.roi_list;
 fit_voxels          = cur_dataset.fit_voxels;
+xy_smooth_size      = cur_dataset.xy_smooth_size;
 
 % Add the location of the user input file if exists, else empty
 if strcmp(fit_type, 'user_input')
@@ -146,6 +147,8 @@ if submit
     disp(output_basename);
     disp('User selected only odd echoes: ');
     disp(odd_echoes);
+    disp('User selected smooth size (Gaussian standard deviation): ');
+    disp(xy_smooth_size);
     disp('User selected fit all voxels: ');
     disp(fit_voxels);
     disp('User selected ROIs: ');
@@ -266,7 +269,6 @@ for n=1:number_of_fits
         end
     end
     
-    
     % Remove even echoes if requested
     if odd_echoes
         dim_n = floor((dim_n+1)/2);
@@ -278,6 +280,23 @@ for n=1:number_of_fits
         end
         shaped_image = temp_image;
         parameter_list = temp_n;
+    end
+    
+    % Smooth XY if requested
+    if xy_smooth_size~=0 && fit_voxels
+        % make size 3*sigma rounded to nearest odd
+        kernel_size_odd = 2.*round((xy_smooth_size*3+1)/2)-1;
+        if kernel_size_odd<3
+            kernel_size_odd = 3;
+        end
+        h = fspecial('gaussian', [kernel_size_odd kernel_size_odd],xy_smooth_size);
+        for i=1:dim_z
+            for j=1:dim_n
+                single_image = shaped_image(:,:,i,j);
+                smooth_image = filter2(h, single_image);
+                shaped_image(:,:,i,j) = smooth_image;
+            end
+        end
     end
     
     % Change fittype to linear if needed for visualization

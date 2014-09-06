@@ -11,6 +11,7 @@ handles.batch_data(cur_batch).parameters  = str2num(get(handles.te_box, 'String'
 handles.batch_data(cur_batch).rsquared = str2num(get(handles.rsquared_threshold, 'String'));
 handles.batch_data(cur_batch).tr = str2num(get(handles.tr, 'String'));
 handles.batch_data(cur_batch).fit_voxels = get(handles.fit_voxels, 'Value');
+handles.batch_data(cur_batch).xy_smooth_size = str2num(get(handles.smooth_size, 'String'));
 
 % handles.batch_data(cur_batch).file_list = handles.file_list;
 handles.batch_data(cur_batch).roi_list = handles.roi_list;

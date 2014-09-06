@@ -22,7 +22,7 @@ function varargout = fitting_gui(varargin)
 
 % Edit the above text to modify the response to help fitting_gui
 
-% Last Modified by GUIDE v2.5 18-Apr-2014 12:59:29
+% Last Modified by GUIDE v2.5 05-Sep-2014 18:54:05
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -513,8 +513,16 @@ handles = update_parameters(handles, batch_selected);
 guidata(hObject, handles);
 uiremember;
 
+function smooth_size_Callback(hObject, eventdata, handles)
 
+% Get Selected Dataset
+batch_selected = get(handles.batch_set,'Value');
 
+% Update handles structure
+handles = update_parameters(handles, batch_selected);
+
+guidata(hObject, handles);
+uiremember;
 
 % --- Executes on selection change in batch_set.
 function batch_set_Callback(hObject, eventdata, handles)
@@ -1129,3 +1137,10 @@ uirestore;
 % --- Executes during object creation, after setting all properties.
 function neuroecon_CreateFcn(hObject, eventdata, handles)
 uirestore;
+
+% --- Executes during object creation, after setting all properties.
+function smooth_size_CreateFcn(hObject, eventdata, handles)
+uirestore;
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
