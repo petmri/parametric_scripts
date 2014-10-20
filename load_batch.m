@@ -22,6 +22,7 @@ set(get(handles.fit_type,'SelectedObject'),'Value', 0);
 set(get(handles.data_order, 'SelectedObject'), 'Value', 0);
 set(handles.te_box, 'String', '');
 set(handles.tr, 'String', '');
+set(handles.smooth_size, 'String', '');
 set(handles.odd_echoes, 'Value', 0);
 set(handles.output_basename,'String','');
 set(handles.rsquared_threshold,  'String' ,num2str(0.6));
@@ -41,6 +42,7 @@ end
 set(handles.output_basename,'String',handles.batch_data(batch_selected).output_basename);
 set(handles.te_box, 'String', num2str(handles.batch_data(batch_selected).parameters));
 set(handles.tr,'String',handles.batch_data(batch_selected).tr);
+set(handles.smooth_size,'String',handles.batch_data(batch_selected).xy_smooth_size);
 set(handles.odd_echoes, 'Value', handles.batch_data(batch_selected).odd_echoes);
 set(handles.rsquared_threshold,  'String' ,num2str(handles.batch_data(batch_selected).rsquared));
 handles = visualize_R2(handles);

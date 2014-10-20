@@ -96,7 +96,6 @@ if submit
         if JOB_struct(1).save_log
             save(fullfile(JOB_struct(1).current_dir, strrep(JOB_struct(1).log_name, '.log', '_log.mat')), 'JOB_struct', '-mat');
             log_name = fullfile(JOB_struct(1).current_dir, strrep(JOB_struct(1).log_name, '.log', '_log.mat'));
-
         end
     end
     
@@ -128,10 +127,14 @@ if submit
             if JOB_struct(1).save_log
                 attachments{end+1} = log_name;
             end
+        else
+            if JOB_struct(1).save_txt
+                for i=1:length(new_txtname)
+                    attachments{end+1} = new_txtname(i).txtname;
+                end
+            end
         end
-        for i=1:length(new_txtname)
-            attachments{end+1} = new_txtname(i).txtname;
-        end
+        
         
         sendmail(JOB_struct(1).email,'MRI map processing completed',['Hello! Your Map Calc job on '...
             ,hostname,' is done! Logs of data and txt attached if desired'], attachments);

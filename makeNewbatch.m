@@ -37,6 +37,7 @@ handles.batch_data(cur_batch).output_basename = '';
 handles.batch_data(cur_batch).parameters  = str2num(get(handles.te_box, 'String'));
 handles.batch_data(cur_batch).rsquared = str2num(get(handles.rsquared_threshold, 'String'));
 handles.batch_data(cur_batch).tr = str2num(get(handles.tr, 'String'));
+handles.batch_data(cur_batch).xy_smooth_size = str2num(get(handles.smooth_size, 'String'));
 handles.batch_data(cur_batch).preview_image = [];
 
 handles = load_batch(handles);
