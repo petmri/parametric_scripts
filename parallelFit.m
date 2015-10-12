@@ -8,6 +8,8 @@ number_voxels = dim_x*dim_y*dim_z;
 % Preallocate for speed
 if strfind(fit_type, 'user_input')
     fit_output = zeros([number_voxels 3*ncoeffs+2],'double');
+elseif strfind(fit_type, 't2_exponential_plus_c')
+    fit_output = zeros([number_voxels 9],'double');
 else
     fit_output = zeros([number_voxels 6],'double');
 end

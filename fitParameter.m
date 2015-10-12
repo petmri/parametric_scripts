@@ -80,6 +80,78 @@ if r_squared>=rsquared_threshold
         rho_fit = cf_.a;
         exponential_fit   = -1/cf_.b;
         exponential_95_ci = -1./confidence_interval(:,2);
+    elseif(strcmp(fit_type,'t2_exponential_plus_c')) %Wood's model
+        % t = time vector in seconds
+        % s = S(t) in arbitrary units
+
+        t = parameter(ok_);
+        s = si(ok_);
+
+        % Find maximum absolute signal
+        M0_est = max(s);
+        M1_est = min(s);
+        T2_est = (max(t)-min(t))/log(M0_est/M1_est);
+        % T2_est = 0.05;     % s
+
+        % Setup optimization parameters
+%         options = optimset('lsqcurvefit');
+%         options.Display = 'off';
+%         options.TolFun = 1e-12;
+%         options.TolX = 1e-12;
+%         options.MaxIter = 10000;
+
+        % Initial parameter guess
+        x0 = [M0_est T2_est M1_est];
+
+        % Parameter constraints
+        lb = [0   0   0];
+        ub = [Inf 100  Inf];
+
+        % Start optimization
+%         x_fit = lsqcurvefit('wood_exp_plus_const',x0,t,s,lb,ub,options);
+        
+        fo_ = fitoptions('method','NonlinearLeastSquares','Lower',lb,'Upper',ub);
+        set(fo_,'Startpoint',x0);
+        set(fo_,'Maxiter',10000);
+        set(fo_,'TolX',1e-12);
+        set(fo_,'TolFun',1e-12);
+        ft_ =  fittype('a*exp(-x/b)+c');
+        
+        % Fit the model
+        [cf_, gof] = fit(parameter(ok_),si(ok_),ft_,fo_);
+
+        % Calculate fitted function values
+%         s_fit = exp_plus_const(x_fit,t);
+%         T2r=sum((s-s_fit).^2);              % Error power
+%         s_fit2 = exp_plus_const(x0,t);
+        
+        % Calculate return values
+%         M0 = x_fit(1);
+%         T2s = x_fit(2);
+%         M1 = x_fit(3); 
+        
+        % Save Results
+%         sum_squared_error = T2r;
+%         r_squared = 1-sum_squared_error/sum(s.^2);
+%         if ~isfinite(r_squared) || ~isreal(r_squared)
+%             r_squared = 0;
+%         end 
+%         rho_fit = M0;
+%         exponential_fit   = T2s;
+%         % Confidence intervals not calculated
+%         exponential_95_ci(1) = -1;
+%         exponential_95_ci(2) = -1;
+        
+        % Save Results
+        sum_squared_error = gof.sse;
+        r_squared = gof.rsquare;
+        confidence_interval = confint(cf_,0.95);
+        rho_fit = cf_.a;
+        exponential_fit   = cf_.b;
+        plus_c = cf_.c;
+        plus_c_low = confidence_interval(1,3);
+        plus_c_high = confidence_interval(2,3);
+        exponential_95_ci = confidence_interval(:,2);
     elseif(strcmp(fit_type,'ADC_exponential'))
         % Restrict fits for ADC from 0 to Inf, and coefficient ('rho') from
         % 0 to inf
@@ -364,6 +436,8 @@ end
 
 if ~strcmp(fit_type, 'user_input')
     fit_output = [exponential_fit rho_fit r_squared exponential_95_ci(1) exponential_95_ci(2) sum_squared_error];
+elseif ~strcmp(fit_type, 't2_exponential_plus_c')
+    fit_output = [exponential_fit rho_fit r_squared exponential_95_ci(1) exponential_95_ci(2) sum_squared_error plus_c plus_c_low plus_c_high];
 else
     fit_output = [coeffvals r_squared exponential_95_ci(1,:) exponential_95_ci(2,:) sum_squared_error];
     
