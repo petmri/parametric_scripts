@@ -1,6 +1,7 @@
 % INPUTS
 %------------------------------------
-file_list = {'20151005_0807431005A.nii';'20151005_0807431005AA.nii';'20151005_0807431005AB.nii';'20151005_0807431005AC.nii';'20151005_0807431005AD.nii';'20151005_0807431005AE.nii'};
+% file_list = {'20151005_0807431005A.nii';'20151005_0807431005AA.nii';'20151005_0807431005AB.nii';'20151005_0807431005AC.nii';'20151005_0807431005AD.nii';'20151005_0807431005AE.nii'};
+file_list = {'echo1.nii';'echo2.nii';'echo3.nii';'echo4.nii';'echo5.nii';'echo6.nii'};
 					% must point to valid nifti files
 parameter_list = [1.05 2.2 3.35 4.5 5.65 6.8]';
 					% units of ms or degrees
@@ -13,7 +14,7 @@ rsquared_threshold = 0.2;
 					% all fits with R^2 less than this set to -1
 number_cpus = 4;	% not used if running on neuroecon
 neuroecon = 0;		% boolean
-output_basename = 'iron';
+output_basename = 'iron_nested';
 					% base of output filename
 data_order = 'xyzfile';% in what order is the data organized
 					% options{'xynz','xyzn','xyzfile'}
