@@ -22,7 +22,7 @@ function varargout = fitting_gui(varargin)
 
 % Edit the above text to modify the response to help fitting_gui
 
-% Last Modified by GUIDE v2.5 05-Sep-2014 18:54:05
+% Last Modified by GUIDE v2.5 13-Oct-2015 14:49:58
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;

@@ -1,0 +1,4 @@
+% Send Email
+%%%%%%%%%%%%%%%%%%%%%%%
+gmail_from_username = user@gmail.com
+gmail_from_password = my_password

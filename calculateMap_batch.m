@@ -12,6 +12,24 @@ if submit
     current_dir= JOB_struct(1).current_dir;
     log_name   = JOB_struct(1).log_name;
     
+    % Get preferences
+    if exist('email_preferences.txt', 'file') == 2
+        prefs = parse_preference_file('email_preferences.txt',0,...
+            {'gmail_from_username' 'gmail_from_password'});
+        gmail_from_username = prefs.gmail_from_username;
+        gmail_from_password = prefs.gmail_from_password;
+    else
+        gmail_from_username = '';
+        gmail_from_password = '';
+        if JOB_struct(1).email_log
+            warning('No email user/password specified in email_preferences.txt, unable to send email');
+            %In case warnings are disabled
+            disp('No email user/password specified in email_preferences.txt, unable to send email');
+            
+            JOB_struct(1).email_log = 0;
+        end
+    end
+
     % log actual done logs
     done = 0;
     new_txtname = '';
@@ -104,14 +122,11 @@ if submit
 
     if JOB_struct(1).email_log && ~errors
         % Email the person on completion
-        % Define these variables appropriately:
-        mail = 'immune.caltech@gmail.com'; %Your GMail email address
-        password = 'antibody'; %Your GMail password
-        % Then this code will set up the preferences properly:
-        setpref('Internet','E_mail',mail);
+        % from username and password set in email_preferences.txt
+        setpref('Internet','E_mail',gmail_from_username);
         setpref('Internet','SMTP_Server','smtp.gmail.com');
-        setpref('Internet','SMTP_Username',mail);
-        setpref('Internet','SMTP_Password',password);
+        setpref('Internet','SMTP_Username',gmail_from_username);
+        setpref('Internet','SMTP_Password',gmail_from_password);
         props = java.lang.System.getProperties;
         props.setProperty('mail.smtp.auth','true');
         props.setProperty('mail.smtp.socketFactory.class', 'javax.net.ssl.SSLSocketFactory');

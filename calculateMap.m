@@ -620,7 +620,11 @@ for n=1:number_of_fits
         end
     end
     if number_rois
-        headings = {'ROI path', 'ROI', fit_type, 'rho', 'r squared', '95% CI low', '95% CI high', 'Sum Squared Error'};
+        if strcmp(fit_type,'t2_exponential_plus_c')
+            headings = {'ROI path', 'ROI', fit_type, 'rho', 'r squared', '95% CI low', '95% CI high', 'Sum Squared Error', 'C', 'C 95% CI low', 'C 95% CI high'};
+        else
+            headings = {'ROI path', 'ROI', fit_type, 'rho', 'r squared', '95% CI low', '95% CI high', 'Sum Squared Error'};
+        end
         xls_results = [roi_list roi_name mat2cell(roi_output,ones(1,size(roi_output,1)),ones(1,size(roi_output,2)))];
         xls_results = [headings; xls_results];
         xls_path = fullfile(file_path, [output_basename, '_', fit_type,'_', filename,'.xls']);

@@ -1,7 +1,8 @@
 % INPUTS
 %------------------------------------
 % file_list = {'20151005_0807431005A.nii';'20151005_0807431005AA.nii';'20151005_0807431005AB.nii';'20151005_0807431005AC.nii';'20151005_0807431005AD.nii';'20151005_0807431005AE.nii'};
-file_list = {'echo1.nii';'echo2.nii';'echo3.nii';'echo4.nii';'echo5.nii';'echo6.nii'};
+% file_list = {'echo1.nii';'echo2.nii';'echo3.nii';'echo4.nii';'echo5.nii';'echo6.nii'};
+file_list = {'10-2-e1-s.nii';'10-2-e2-s.nii';'10-2-e3-s.nii';'10-2-e4-s.nii';'10-2-e5-s.nii';'10-2-e6-s.nii'};
 					% must point to valid nifti files
 parameter_list = [1.05 2.2 3.35 4.5 5.65 6.8]';
 					% units of ms or degrees
@@ -19,7 +20,7 @@ output_basename = 'iron_nested';
 data_order = 'xyzfile';% in what order is the data organized
 					% options{'xynz','xyzn','xyzfile'}
 tr = 20;			% units ms, only used for T1 FA fitting
-email = 'srsbarnes@gmail.com';
+email = '';
 					% Email will be sent to this address on job completion
 save_log       = 1;
 email_log      = 0;
