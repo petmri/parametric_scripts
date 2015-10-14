@@ -9,6 +9,7 @@ if ~isempty(single_IMG)
     axes(handles.r2graph)
     %imagesc(zeros(100,100))
     imagesc(single_IMG(:,:, cur_slice_num)', [0 1]);
+    colormap(parula)
     colorbar
     set(handles.r2graph, 'XTick', []);
     set(handles.r2graph, 'YTick', []);
