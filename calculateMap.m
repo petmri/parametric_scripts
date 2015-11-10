@@ -187,18 +187,33 @@ else
 end
 
 % Create parallel processing pool
-if ~neuroecon && exist('matlabpool')
-    s = matlabpool('size');
-    if s~=number_cpus
-        if s>0
-            matlabpool close
+if ~neuroecon
+    r_prefs = parse_preference_file('parametric_preferences.txt',0,{'use_matlabpool'},{0});
+    if str2num(r_prefs.use_matlabpool)
+        s = matlabpool('size');
+        if s~=number_cpus
+            if s>0
+                matlabpool close
+            end
+            matlabpool('local', number_cpus); % Check
         end
-        matlabpool('local', number_cpus); % Check
-    end
-    
-    if strcmp(fit_type, 'user_input') && submit
-       matlabpool('ADDATTACHEDFILES', {fit_file});
-    end    
+        if strcmp(fit_type, 'user_input') && submit
+            matlabpool('ADDATTACHEDFILES', {fit_file});
+        end  
+    else
+        s = gcp('nocreate');
+        if isempty(s)
+            parpool('local',number_cpus);
+        else
+            if s.NumWorkers~=number_cpus
+                delete(gcp('nocreate'))
+                parpool('local',number_cpus);
+            end
+        end
+        if strcmp(fit_type, 'user_input') && submit
+           parpool('ADDATTACHEDFILES', {fit_file});
+        end    
+    end  
 end
 
 execution_time = zeros(size(file_list,1),1);
