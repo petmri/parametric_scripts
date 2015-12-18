@@ -228,8 +228,7 @@ for n=1:number_of_fits
         
         % Read file and get header information
         [file_path, filename ext]  = fileparts(imagefile);
-        % 		nii = load_nii(imagefile);
-        nii = load_untouch_nii(imagefile);
+        nii = load_nii(imagefile);
         res = nii.hdr.dime.pixdim;
         res = res(2:4);
         image_3d = nii.img;
