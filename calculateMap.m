@@ -232,6 +232,7 @@ for n=1:number_of_fits
         res = nii.hdr.dime.pixdim;
         res = res(2:4);
         image_3d = nii.img;
+        input_hdr = nii.hdr;
         [dim_x, dim_y, dim_zn] = size(image_3d);
         % 		dim_n = size(parameter_list,1);
         dim_z = dim_zn / dim_n;
@@ -263,6 +264,7 @@ for n=1:number_of_fits
             res = nii.hdr.dime.pixdim;
             res = res(2:4);
             image_3d = nii.img;
+            input_hdr = nii.hdr;
             
             % Resize to small for visualization
             if ~submit
@@ -578,17 +580,17 @@ for n=1:number_of_fits
 
                 % Write output
                 for i = 1:ncoeffs
-                    eval(['T2dirnii(' num2str(i) ').nii = make_nii(' coeffs{i} '_fit, res, [1 1 1], [], output_basename);']);
+                    eval(['T2dirnii(' num2str(i) ').nii = make_nii(' coeffs{i} '_fit, res, [1 1 1], [], output_basename,input_hdr);']);
                     eval(['save_nii(T2dirnii(' num2str(i) ').nii, fullpathT2{' num2str(i) '});']);
 
-                    eval(['CILOWdirnii(' num2str(i) ').nii = make_nii(' coeffs{i} '_cilow, res, [1 1 1], [], output_basename);']);
+                    eval(['CILOWdirnii(' num2str(i) ').nii = make_nii(' coeffs{i} '_cilow, res, [1 1 1], [], output_basename,input_hdr);']);
                     eval(['save_nii(CILOWdirnii(' num2str(i) ').nii, fullpathCILow{' num2str(i) '});']);
 
-                    eval(['CIHIGHdirnii(' num2str(i) ').nii = make_nii(' coeffs{i} '_cihigh, res, [1 1 1], [], output_basename);']);
+                    eval(['CIHIGHdirnii(' num2str(i) ').nii = make_nii(' coeffs{i} '_cihigh, res, [1 1 1], [], output_basename,input_hdr);']);
                     eval(['save_nii(CIHIGHdirnii(' num2str(i) ').nii, fullpathCIHigh{' num2str(i) '});']);
                 end
 
-                Rsquareddirnii   = make_nii(r_squared, res, [1 1 1], [], 'R Squared of fit');
+                Rsquareddirnii   = make_nii(r_squared, res, [1 1 1], [], 'R Squared of fit',input_hdr);
                 save_nii(Rsquareddirnii, fullpathRsquared);
 
             else
@@ -603,14 +605,14 @@ for n=1:number_of_fits
                     , '.nii']);
 
                 % Write output
-                T2dirnii = make_nii(exponential_fit, res, [1 1 1], [], fit_type);
-                Rsquareddirnii   = make_nii(r_squared, res, [1 1 1], [], 'R Squared of fit');
+                T2dirnii = make_nii(exponential_fit, res, [1 1 1], [], fit_type,input_hdr);
+                Rsquareddirnii   = make_nii(r_squared, res, [1 1 1], [], 'R Squared of fit',input_hdr);
                 save_nii(T2dirnii, fullpathT2);
                 save_nii(Rsquareddirnii, fullpathRsquared);
                 % Linear_fast does not calculate confidence intervals
                 if ~strcmp(fit_type,'t2_linear_fast') && ~strcmp(fit_type,'t1_fa_linear_fit')
-                    CILowdirnii  = make_nii(confidence_interval_low, res, [1 1 1], [], 'Low 95% confidence interval');
-                    CIHighdirnii  = make_nii(confidence_interval_high, res, [1 1 1], [], 'High 95% confidence interval');
+                    CILowdirnii  = make_nii(confidence_interval_low, res, [1 1 1], [], 'Low 95% confidence interval',input_hdr);
+                    CIHighdirnii  = make_nii(confidence_interval_high, res, [1 1 1], [], 'High 95% confidence interval',input_hdr);
                     save_nii(CILowdirnii, fullpathCILow);
                     save_nii(CIHighdirnii, fullpathCIHigh);
                 end
