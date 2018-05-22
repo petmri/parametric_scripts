@@ -29,10 +29,11 @@ elseif(strcmp(fit_type,'t1_fa_fit'))
     Xbar = mean(x_lin(ok_));
     y = y_lin(ok_)-Ybar;
     x = x_lin(ok_)-Xbar;
-    %     slope =sum(x.*y)/sum(x.^2);
+    slope =sum(x.*y)/sum(x.^2);
     %     intercept = Ybar-slope.*Xbar; %#ok<NASGU>
     r_squared = (sum(x.*y)/sqrt(sum(x.^2)*sum(y.^2)))^2;
-    if ~isfinite(r_squared)
+    % Prevents negative slopes and complex results
+    if ~isfinite(r_squared) || slope<0
         r_squared = 0;
     end
 elseif(strcmp(fit_type,'t2_linear_fast') || strcmp(fit_type,'t1_fa_linear_fit')) || strcmp(fit_type, 'ADC_linear_fast')
@@ -382,6 +383,10 @@ if r_squared>=rsquared_threshold
 %         end
         if exponential_fit<0
             exponential_fit = -0.5;
+        end
+        % Prevent complex results
+        if slope<0
+            exponential_fit = -0.4;
         end
         exponential_95_ci = [-1 -1];
     elseif(strcmp(fit_type,'t1_ti_exponential_fit'))
