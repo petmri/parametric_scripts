@@ -377,16 +377,17 @@ if r_squared>=rsquared_threshold
             r_squared = 0;
         end
         rho_fit = intercept;
-        exponential_fit   = -tr/log(slope);
+        % Prevent complex results
+        if slope<0
+            exponential_fit = -0.4;
+        else
+            exponential_fit   = -tr/log(slope);
+        end
 %         if exponential_fit>10000
 %             exponential_fit = 10001;
 %         end
         if exponential_fit<0
             exponential_fit = -0.5;
-        end
-        % Prevent complex results
-        if slope<0
-            exponential_fit = -0.4;
         end
         exponential_95_ci = [-1 -1];
     elseif(strcmp(fit_type,'t1_ti_exponential_fit'))
