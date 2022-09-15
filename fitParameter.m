@@ -335,8 +335,10 @@ if r_squared>=rsquared_threshold
         parameter = parameter*pi/180;
         % scale si, non-linear fit has trouble converging with big numbers
         scale_max = max(si);
-        si = si./scale_max;
-        
+        if scale_max > 0
+            si = si./scale_max;
+        end
+
         % Restrict fits for T1 from 0ms to 5000ms, and coefficient ('rho') from
         % 0 to inf
         fo_ = fitoptions('method','NonlinearLeastSquares','Lower',[0 0],'Upper',[Inf   10000]);
@@ -346,8 +348,7 @@ if r_squared>=rsquared_threshold
         ft_ =  fittype('a*( (1-exp(-tr/t1))*sin(theta) )/( 1-exp(-tr/t1)*cos(theta) )',...
             'dependent',{'si'},'independent',{'theta','tr'},...
             'coefficients',{'a','t1'});
-        
-        % Fit the model
+
         tr_array = tr*ones(size(parameter));
         [cf_, gof] = fit([parameter(ok_),tr_array],si(ok_),ft_,fo_);
         
@@ -359,6 +360,7 @@ if r_squared>=rsquared_threshold
         rho_fit = cf_.a*scale_max;
         exponential_fit   = cf_.t1;
         exponential_95_ci = confidence_interval(:,2);
+
     elseif(strcmp(fit_type,'t1_fa_linear_fit'))
         y_lin = si./sin(pi/180*parameter);
         x_lin = si./tan(pi/180*parameter);

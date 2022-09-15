@@ -5,14 +5,14 @@ file_list = {strcat(path,'VFA.motioncorrected.nii')};
 					% must point to valid nifti files
 parameter_list = [2 5 10 12 15]';
 					% units of ms or degrees
-fit_type = 't1_ti_exponential_fit';
+fit_type = 't1_fa_fit';
 					% options{'none','t2_linear_simple','t2_linear_weighted','t2_exponential','t2_linear_fast'
 					%			't1_tr_fit','t1_fa_fit','t1_fa_linear_fit','t1_ti_exponential_fit'}
 odd_echoes = 0;		% boolean, if selected only odd parameters will be
 					% used for fit
 rsquared_threshold = 0.6;
 					% all fits with R^2 less than this set to -1
-number_cpus = 4;	% not used if running on neuroecon
+number_cpus = 4;	% not used if running on neuroecon or GPU
 neuroecon = 0;		% boolean
 output_basename = 'T1_map';
 					% base of output filename
@@ -66,4 +66,8 @@ JOB_struct(1).save_txt = save_txt;
 %------------------------------------
 
 % Call Mapping Function
-calculateMap(JOB_struct);
+% try
+    calculateMap(JOB_struct);
+% catch L
+%     disp("T1 mapping failed! Sad!")
+% end

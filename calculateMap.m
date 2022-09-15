@@ -186,8 +186,12 @@ else
     number_of_fits = size(file_list,1);
 end
 
+% Auto detect GPU
+gpufit_available = strfind(gpuDevice().Name, 'NVIDIA') && ...
+    ( exist("Gpufit-build/matlab/GpufitConstrainedMex.mexa64", 'file') == 3);
+
 % Create parallel processing pool
-if ~neuroecon
+if ~neuroecon && ~gpufit_available
     r_prefs = parse_preference_file('parametric_preferences.txt',0,{'use_matlabpool'},{0});
     if str2num(r_prefs.use_matlabpool)
         s = matlabpool('size');
@@ -213,7 +217,7 @@ if ~neuroecon
         if strcmp(fit_type, 'user_input') && submit
            parpool('ADDATTACHEDFILES', {fit_file});
         end    
-    end  
+    end
 end
 
 execution_time = zeros(size(file_list,1),1);
@@ -450,7 +454,103 @@ for n=1:number_of_fits
     
     % Run Fitting Algorithms Voxels
     if(fit_voxels)
-        if(neuroecon)
+       
+        % Fit the model
+%         prefs = parse_preference_file('T1_prefs.txt', 0, ...
+%             {'gpu_use'});
+        if(gpufit_available && strcmp(fit_type, 't1_fa_fit'))
+            disp("GPU detected, using T1 exponential GPU fitting")
+            model_id = ModelID.T1_FA_EXPONENTIAL;
+            estimator_id = EstimatorID.LSE;
+
+%             si = linear_shape(m,:)';
+%             si = cast(si,'double');
+            
+            % Load GPU fitting values from pref file
+%             T1_prefs = parse_preference_file('T1_prefs.txt',0,...
+%                 {'gpu_tolerance' 'gpu_max_n_iterations', 'gpu_initial_value_a', ...
+%                 gpu_initial_value_t1});
+%             prefs.gpu_tolerance = str2num(prefs_str.gpu_tolerance);
+%             prefs.gpu_max_n_iterations = str2num(prefs_str.gpu_max_n_iterations);
+
+            %Log values used
+%             if verbose
+%                 fprintf('GPU Tolerance = %s\n',num2str(prefs.gpu_tolerance));
+%                 fprintf('GPU Max Iterations = %s\n',num2str(prefs.gpu_max_n_iterations));
+%             end
+            
+            tolerance = 1e-12;
+            max_n_iterations = 200;
+    
+            [dim_x, dim_y, dim_z, dim_te] = size(shaped_image);
+            linear_shape = reshape(shaped_image,dim_x*dim_y*dim_z,dim_te);
+            number_voxels = dim_x*dim_y*dim_z;
+            si = linear_shape';
+            si = cast(si,'double');
+            si_max = max(si,[],"all");
+%             scale_max = max(si);
+%             if si_max > 0
+%                 si = si./si_max;
+%             end
+            
+            init_param = zeros([2,number_voxels]);
+            for i=1:number_voxels
+                init_param(1,i) = si_max*10;
+                init_param(2,i) = 500;
+            end
+            init_param_single = single(init_param);
+            
+            constraints = zeros([4,number_voxels]);
+            for i=1:number_voxels
+                constraints(1,i) = 0;
+                constraints(2,i) = inf;
+                constraints(3,i) = 0;
+                constraints(4,i) = 10000;
+            end
+            constraints_single = single(constraints);
+            % constrain upper and lower bounds for both parameters
+            constraint_types = int32([3,3]);
+            
+            % Load measured data
+            tr_array = tr*ones(size(parameter_list));
+            parameter_list = deg2rad(parameter_list);
+            indie_vars = single([parameter_list' tr_array']);
+            si_single = single(si);
+
+            % Execute GPU fit
+            [parameters, states, chi_squares, n_iterations, time] = ...
+                gpufit_constrained(si_single,[], model_id, init_param_single, ...
+                constraints_single, constraint_types, tolerance, max_n_iterations, ...
+                [], estimator_id, indie_vars);
+%         fit_output = parallelFit(parameter_list,fit_type,shaped_image,tr, 
+% submit, fit_file, ncoeffs, coeffs, tr_present,rsquared_threshold);
+            % If did not converge discard values
+            one_parameter = parameters(1,:);
+            one_parameter(states~=0) = -0.000001;  %a
+            parameters(1,:) = one_parameter;
+            one_parameter = parameters(2,:);
+            one_parameter(states~=0) = -0.000001;  %t1
+            parameters(2,:) = one_parameter;
+            
+%             GG = [parameters' chi_squares'];
+            % add zeros for the unknown + and - 95 CI
+%             GG = [GG zeros(number_voxels, 4)];
+%             residuals = [];
+
+            fit_output(:,1) = parameters(2,:);
+            fit_output(:,2) = parameters(1,:);
+            fit_output(:,3) = chi_squares;
+            fit_output(:,4) = zeros(number_voxels,1);
+            fit_output(:,5) = zeros(number_voxels,1);
+            
+    %         for i=1:number_voxels
+    %             % filter negatives
+    %             if parameters(1,i) > 0
+    %                 GG(i,1) = parameters(1,i); %Ktrans
+    %             end
+    %             GG(i,2) = parameters(2,i); %vp
+
+        elseif (neuroecon)
             %Schedule object, neuroecon
             sched = findResource('scheduler', 'configuration', 'NeuroEcon.local');
             set(sched, 'SubmitArguments', '-l walltime=12:00:00 -m abe -M thomasn@caltech.edu')
