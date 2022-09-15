@@ -38,7 +38,7 @@ elseif nargin==1 && ishandle(varargin{1})
     h=varargin{1};
 elseif nargin==1 && isstruct(varargin{1})
     opts=varargin{1};
-elseif nargin==2 && (isnumeric(varargin{1}) || ishandle(varargin{1}))&& isstruct(varargin{2})
+elseif nargin==2 && isnumeric(varargin{1})&& isstruct(varargin{2})
     h=varargin{1};
     opts=varargin{2};
     if length(h)~=1, error('Multilple H are not supported when using OPTS options structure'); end
